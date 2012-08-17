@@ -1,0 +1,11 @@
+August 16, 2012
+Build the system
+Using virtualbox VirtualBox-4.1.18-78361-Win.exe on windows XP
+Downloaded &installed the virtualbox extension pack
+Installed ubuntu-12.04-desktop-i386.iso
+Installed 'git' with: sudo apt-get install git
+installed 'repo' with: git clone git://codeaurora.org/tools/repo.git
+cp repo /usr/bin
+sudo chmod 777 /usr/bin/repo
+repo init -u git://codeaurora.org/platform/manifest.git
+
