@@ -1,0 +1,59 @@
+#! /bin/sh
+# graciously ripped from grub-image
+# Joel Nider <joel@nider.org> 2006-11-01
+# Thanks Gordon!
+# Gordon Matzigkeit <gord@fig.org>, 2000-07-25
+#
+#   Copyright (C) 2006 Free Software Foundation, Inc.
+#
+# This file is free software; you can redistribute it and/or modify it
+# under the terms of the GNU General Public License as published by
+# the Free Software Foundation; either version 2 of the License, or
+# (at your option) any later version.
+#
+# This program is distributed in the hope that it will be useful, but
+# WITHOUT ANY WARRANTY; without even the implied warranty of
+# MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU
+# General Public License for more details.
+#
+# You should have received a copy of the GNU General Public License
+# along with this program; if not, write to the Free Software
+# Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA 02111-1307, USA.
+
+prefix=/usr/local
+exec_prefix=${prefix}
+sbindir=/sbin
+libdir=${exec_prefix}/lib
+PACKAGE=kos
+host_cpu=i386
+host_os=linux-gnu
+host_vendor=pc
+context=${host_cpu}-${host_vendor}
+letter=k
+
+# create an empty image file
+#dd if=/dev/zero of=kos-1.0.img bs=512 count=2880
+
+#now create the empty file system in the image file
+#mke2fs -F -t ext2 kos-1.0.img
+
+# now mount the file with the file system on it
+vfd mount kos-1.0.img /L:${letter} /144
+
+# install grub
+#grub-install /cygdrive/${letter}
+
+# create the directories, and copy the files to the correct locations
+#mkdir /cygdrive/${letter}/boot
+#mkdir /cygdrive/${letter}/boot/grub
+cp kos.bin /cygdrive/${letter}/boot
+cp idle/idle.exe /cygdrive/${letter}/boot
+cp command/command.exe /cygdrive/${letter}/boot
+cp bus/pci/pci.exe /cygdrive/${letter}/boot
+cp devicemgr/devicemgr.exe /cygdrive/${letter}/boot
+cp grub.conf /cygdrive/${letter}/boot/grub
+
+# unmount the file
+vfd umount
+
+exit 0

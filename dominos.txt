@@ -4,8 +4,32 @@ Using virtualbox VirtualBox-4.1.18-78361-Win.exe on windows XP
 Downloaded &installed the virtualbox extension pack
 Installed ubuntu-12.04-desktop-i386.iso
 Installed 'git' with: sudo apt-get install git
-installed 'repo' with: git clone git://codeaurora.org/tools/repo.git
-cp repo /usr/bin
-sudo chmod 777 /usr/bin/repo
-repo init -u git://codeaurora.org/platform/manifest.git
+set up .gitconfig
+git config --global user.name "Joel Nider"
+git config --global user.email "joel@xxx"
 
+Sept 10, 2012
+I tried a million ways to use parted, fdisk, cfdisk, sfdisk to make a simple boot disk.
+These tools have frustrated me to no end, and still I did not succeed.  In the end, the
+solution was simple: use the gnome tool "disk utility" to partition the disk as I wanted,
+and then copy the mbr to a 512-byte binary file.  Now each time I wish to reproduce the
+image, I create the empty file, use the loop dev to make it into a disk, and use dd to copy
+the prepared mbr into it.  Now it is just a matter of using "mkdosfs" to format the
+partition, then using syslinux to put a boot loader on it.  Now it is all wrapped up in a
+convenient script 'makeimage.sh' which performs all of these steps, and additionally puts
+the kernel, and creates an iso image ready for booting from a CD.
+
+Sept 13, 2012
+One more problem.  I found out that if I perform the above steps, the kernel does not
+automatically recognize the partitions and create /dev/loop0p1 for me.  I also found
+out several kernel patches have been proposed, and none have yet been accepted for
+some reason.  At least partx does the job, and has been added to the script.  And
+now Virtualbox is up to 4.1.22, and we're running on Windows 7.
+
+Sept 25, 2012
+Tried to use the sel4 kernel from OK labs to save time.  It doesn't boot right, so I
+have to find another solution.  I found one of my old KOS kernels, and it booted right
+away using the same boot loader (SYSLINUX+mboot.c32) so I know my script, image, method
+etc are correct.  I then tried Fiasco.OC and was able to boot that one too, so there is
+definately a problem with the sel4 build I'm using.  Anyway, we're almost set up to be
+able to use 3 different kernels interchangably.

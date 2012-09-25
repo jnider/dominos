@@ -1,0 +1,18 @@
+////////////////////////////////////////////////////////////////////////////////
+/// @file   kdefines.h
+/// @short  kernel-wide definitions
+/// @author J.Nider
+/// @date   30/10/2009
+////////////////////////////////////////////////////////////////////////////////
+////////////////////////////////////////////////////////////////////////////////
+
+#ifndef _KDEFINES__H
+#define _KDEFINES__H
+
+// This file contains project-wide definitions
+// it should be included by all source files
+
+//#define NULL 0
+//#define FAR_CALLS // only define this if your version of GCC can handle the keyword 'far'
+
+#endif // _KDEFINES__H

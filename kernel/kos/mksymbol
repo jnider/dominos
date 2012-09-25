@@ -1,0 +1,3 @@
+#!/usr/bin/bash
+
+objdump -t $1 | grep ".stub_text" | gawk 'BEGIN{getline} { print $6 " = 0x" $1 ";" }' > symbolfile
