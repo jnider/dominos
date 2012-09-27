@@ -7,6 +7,11 @@ else IMAGE=$1;
 fi
 echo "Output file name is: "$IMAGE
 
+if [ $BOOTLOADER = SYSLINUX ]
+then echo "Using SYSLINUX"
+else echo "Using GRUB"
+fi
+
 # find syslinux, which is the bootloader
 SYSLINUX=`which syslinux`
 SYSLINUXDIR=`echo $SYSLINUX | sed 's:/bin/:/share/:'`
@@ -63,16 +68,14 @@ mount $partition $BOOTFS
 
 # put the files in the right locations
 echo "Copying files for image"
-BOOTDIR=$BOOTFS/boot/syslinux
+BOOTDIR=$BOOTFS #/boot/syslinux
 mkdir -p $BOOTDIR
+mkdir -p $BOOTDIR/boot
 cp image/syslinux.cfg $BOOTDIR
 cp image/msg.txt $BOOTDIR
-cp /usr/lib/syslinux/mboot.c32 $BOOTDIR
-cp apps/access_4k_vm $BOOTDIR
-cp apps/hello.bin $BOOTDIR
-cp kernel/sel4/kernel-debug.elf $BOOTDIR
-cp kernel/kos.bin $BOOTDIR
-cp kernel/bootstrap.elf $BOOTDIR
+cp /usr/lib/syslinux/mboot.c32 $BOOTDIR/boot
+cp kernel/joel4/joel4.bin $BOOTDIR
+cp kernel/fiasco/bootstrap.elf $BOOTDIR
 ls -al $BOOTDIR
 
 # unmount

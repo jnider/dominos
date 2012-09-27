@@ -6,5 +6,8 @@
 #
 # jnider 17-08-2012
 
-CC=i686-android-linux-gcc
-LD=i686-android-linux-ld
+CC=gcc
+LD=ld
+AS=as
+
+CFLAGS+=-fno-stack-protector

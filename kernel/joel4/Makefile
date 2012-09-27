@@ -14,7 +14,7 @@ SRC_DIR=src
 OUTPUT_DIR=objs
 
 all: output_dir $(OBJS)
-	$(LD) $(OBJS) -o joel4.bin
+	$(LD) $(OBJS) -T joel4.ld -o joel4.bin
 
 
 output_dir:
