@@ -170,35 +170,11 @@
 				Name="src"
 				>
 				<File
-					RelativePath=".\kernel\kos\cplusplus.cpp"
+					RelativePath=".\kernel\kos\gdt.c"
 					>
 				</File>
 				<File
-					RelativePath=".\kernel\kos\device.cpp"
-					>
-				</File>
-				<File
-					RelativePath=".\kernel\kos\disk_io.c"
-					>
-				</File>
-				<File
-					RelativePath=".\kernel\kos\file.cpp"
-					>
-				</File>
-				<File
-					RelativePath=".\kernel\kos\fs.cpp"
-					>
-				</File>
-				<File
-					RelativePath=".\kernel\kos\fsmanager.cpp"
-					>
-				</File>
-				<File
-					RelativePath=".\kernel\kos\gdt.cpp"
-					>
-				</File>
-				<File
-					RelativePath=".\kernel\kos\idt.cpp"
+					RelativePath=".\kernel\kos\idt.c"
 					>
 				</File>
 				<File
@@ -214,27 +190,19 @@
 					>
 				</File>
 				<File
-					RelativePath=".\kernel\kos\kernel.cpp"
+					RelativePath=".\kernel\kos\kernel.c"
 					>
 				</File>
 				<File
-					RelativePath=".\kernel\kos\keyboard.cpp"
+					RelativePath=".\kernel\kos\keyboard.c"
 					>
 				</File>
 				<File
-					RelativePath=".\kernel\kos\kmalloc.cpp"
+					RelativePath=".\kernel\kos\kmessage.c"
 					>
 				</File>
 				<File
-					RelativePath=".\kernel\kos\kmessage.cpp"
-					>
-				</File>
-				<File
-					RelativePath=".\kernel\kos\krpc.cpp"
-					>
-				</File>
-				<File
-					RelativePath=".\kernel\kos\kstdio.cpp"
+					RelativePath=".\kernel\kos\kstdio.c"
 					>
 				</File>
 				<File
@@ -242,11 +210,7 @@
 					>
 				</File>
 				<File
-					RelativePath=".\kernel\kos\ktask.cpp"
-					>
-				</File>
-				<File
-					RelativePath=".\kernel\kos\ktimer.cpp"
+					RelativePath=".\kernel\kos\ktask.c"
 					>
 				</File>
 				<File
@@ -262,23 +226,7 @@
 					>
 				</File>
 				<File
-					RelativePath=".\kernel\kos\memory.cpp"
-					>
-				</File>
-				<File
-					RelativePath=".\kernel\kos\partition.cpp"
-					>
-				</File>
-				<File
-					RelativePath=".\kernel\kos\process.cpp"
-					>
-				</File>
-				<File
 					RelativePath=".\kernel\kos\rpc.c"
-					>
-				</File>
-				<File
-					RelativePath=".\kernel\kos\scheduler.cpp"
 					>
 				</File>
 				<File
@@ -291,18 +239,6 @@
 				</File>
 				<File
 					RelativePath=".\kernel\kos\timer.c"
-					>
-				</File>
-				<File
-					RelativePath=".\kernel\kos\uart.cpp"
-					>
-				</File>
-				<File
-					RelativePath=".\kernel\kos\vbe.cpp"
-					>
-				</File>
-				<File
-					RelativePath=".\kernel\kos\video.cpp"
 					>
 				</File>
 			</Filter>
