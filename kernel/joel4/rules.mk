@@ -5,7 +5,12 @@
 # jnider 17-08-2012
 
 C_OBJS=$(C_SRC:%.c=objs/%.o)
-OBJS=$(C_OBJS)
+S_OBJS=$(S_SRC:%.s=objs/%.o)
+OBJS=$(S_OBJS) $(C_OBJS)
+
+objs/%.o: src/%.s
+	echo "Assembling $<"
+	$(AS) $(ASMFLAGS) $(INCLUDE_PATHS) -c $< -o $@
 
 objs/%.o: src/%.c
 	echo "Compiling $<"
