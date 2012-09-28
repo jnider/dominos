@@ -9,7 +9,6 @@
 #ifndef _STDIO__H
 #define _STDIO__H
 
-#include "kdefines.h"
 #include <stddef.h>
 
 #define __KERNEL_RETURN()              __ASM("leave\nlret\n")
