@@ -7,9 +7,9 @@ else IMAGE=$1;
 fi
 echo "Output file name is: "$IMAGE
 
-if [ $BOOTLOADER = SYSLINUX ]
-then echo "Using SYSLINUX"
-else echo "Using GRUB"
+if [ $BOOTLOADER = GRUB ]
+then echo "Using GRUB"
+else echo "Using SYSLINUX"
 fi
 
 # find syslinux, which is the bootloader
@@ -70,10 +70,9 @@ mount $partition $BOOTFS
 echo "Copying files for image"
 BOOTDIR=$BOOTFS #/boot/syslinux
 mkdir -p $BOOTDIR
-mkdir -p $BOOTDIR/boot
 cp image/syslinux.cfg $BOOTDIR
 cp image/msg.txt $BOOTDIR
-cp /usr/lib/syslinux/mboot.c32 $BOOTDIR/boot
+cp /usr/lib/syslinux/mboot.c32 $BOOTDIR
 cp kernel/joel4/joel4.bin $BOOTDIR
 cp kernel/fiasco/bootstrap.elf $BOOTDIR
 ls -al $BOOTDIR
