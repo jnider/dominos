@@ -73,8 +73,8 @@ mkdir -p $BOOTDIR
 cp image/syslinux.cfg $BOOTDIR
 cp image/msg.txt $BOOTDIR
 cp /usr/lib/syslinux/mboot.c32 $BOOTDIR
-cp kernel/joel4/joel4.bin $BOOTDIR
-cp kernel/fiasco/bootstrap.elf $BOOTDIR
+cp kernel/joel4/joel4.elf $BOOTDIR
+#cp kernel/fiasco/bootstrap.elf $BOOTDIR
 ls -al $BOOTDIR
 
 # unmount
