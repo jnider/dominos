@@ -81,8 +81,8 @@ void ISR_RegisterIRQHandler(int irq, fault_handler_t callback);
 
 void k_printRegs(regs_t* pRegs);
 
-#define _EOI_MASTER() outportb(0x20, 0x20)
-#define _EOI_SLAVE()  outportb(0xA0, 0x20)
+#define _EOI_MASTER() outb(0x20, 0x20)
+#define _EOI_SLAVE()  outb(0xA0, 0x20)
 
 #define HALT() __ASM("hlt\n")
 

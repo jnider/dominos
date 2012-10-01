@@ -16,20 +16,20 @@
 #define IDT_FLAG_PRESENT   0x80
 
 /* Defines an IDT entry */
-typedef struct idt_entry_t
+typedef struct __PACKED idt_entry_t
 {
     unsigned short base_low;
     unsigned short segment;
     unsigned char always0;     /* This will ALWAYS be set to 0 */
     unsigned char flags;
     unsigned short base_high;
-} idt_entry_t __PACKED;
+} idt_entry_t;
 
-typedef struct idt_ptr_t
+typedef struct __PACKED idt_ptr_t
 {
     unsigned short limit;
     idt_entry_t* base;
-} idt_ptr_t __PACKED;
+} idt_ptr_t;
 
 #define _LOAD_IDT()   __ASM("lidt idtp\n")
 
