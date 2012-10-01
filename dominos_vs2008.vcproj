@@ -281,6 +281,58 @@
 				>
 			</File>
 		</Filter>
+		<Filter
+			Name="joel4"
+			>
+			<Filter
+				Name="src"
+				>
+				<File
+					RelativePath=".\kernel\joel4\src\boot.s"
+					>
+				</File>
+				<File
+					RelativePath=".\kernel\joel4\src\kernel.c"
+					>
+				</File>
+				<File
+					RelativePath=".\kernel\joel4\src\kstdio.c"
+					>
+				</File>
+				<File
+					RelativePath=".\kernel\joel4\src\kvideo.c"
+					>
+				</File>
+				<File
+					RelativePath=".\kernel\joel4\src\serial.c"
+					>
+				</File>
+			</Filter>
+			<Filter
+				Name="inc"
+				>
+				<File
+					RelativePath=".\kernel\joel4\include\kstdio.h"
+					>
+				</File>
+				<File
+					RelativePath=".\kernel\joel4\include\kvideo.h"
+					>
+				</File>
+				<File
+					RelativePath=".\kernel\joel4\include\l4.h"
+					>
+				</File>
+				<File
+					RelativePath=".\kernel\joel4\include\multiboot.h"
+					>
+				</File>
+				<File
+					RelativePath=".\kernel\joel4\include\serial.h"
+					>
+				</File>
+			</Filter>
+		</Filter>
 	</Files>
 	<Globals>
 	</Globals>
