@@ -1,0 +1,10 @@
+*.bin
+joel4.elf
+*.o
+*.swp
+*.ncb
+*.suo
+*.img
+*.iso
+*.user
+obj/*
