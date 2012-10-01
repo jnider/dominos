@@ -7,6 +7,10 @@
 C_SRC = kernel.c \
          kstdio.c \
          kvideo.c \
-         serial.c
+         serial.c \
+         gdt.c    \
+         idt.c    \
+         isr.c
 
-S_SRC = boot.s
+S_SRC = boot.s    \
+         isr_stub.s

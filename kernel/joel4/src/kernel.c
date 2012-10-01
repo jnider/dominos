@@ -2,8 +2,35 @@
 #include "multiboot.h"
 #include "kstdio.h"
 #include "serial.h"
+#include "gdt.h"                       // for managing global descriptor table
+#include "idt.h"                       // for managing interrupt descriptor table
+#include "isr.h"                       // interrupt routines
 
-void print_multiboot(const multiboot_info_t *pInfo)
+#define LOAD_TASK_REGISTER(_index)  __ASM("ltr %0\n" :: "am"(_index))
+
+/* defines for global descriptor table (GDT) entries */
+#define NULL_SEGMENT        0             /* not actually used, but must be 0 */
+#define KERNEL_CODE_SEGMENT 1             /* kernel code segment index */
+#define KERNEL_DATA_SEGMENT 2             /* kernel data segment index */
+#define USER_CODE_SEGMENT   3             /* user code segment index */
+#define USER_DATA_SEGMENT   4             /* user data segment index */
+#define KERNEL_TSS_SEGMENT  5             /* kernel task state segment index */
+#define USER_TSS_SEGMENT    6             /* user task state segment index */
+
+#define KERNEL_CODE_BASE    0             /* kernel code segment base address */
+#define KERNEL_CODE_LIMIT   0xFFFFFFFF    /* kernel code segment limit */
+#define KERNEL_DATA_BASE    0             /* kernel data segment base address */
+#define KERNEL_DATA_LIMIT   0xFFFFFFFF    /* kernel data segment limit */
+#define USER_CODE_BASE      0             /* user code segment base address */
+#define USER_CODE_LIMIT     0xFFFFFFFF    /* user code segment limit */
+#define USER_DATA_BASE      0             /* user data segment base address */
+#define USER_DATA_LIMIT     0xFFFFFFFF    /* user data segment limit */
+
+static tss_t osTSS __attribute__((aligned(128)));
+static tss_t userTSS __attribute__((aligned(128)));
+int kernel_data_segment = KERNEL_DATA_SEGMENT;
+
+static void print_multiboot(const multiboot_info_t *pInfo)
 {
    // How much memory is available?
    if (pInfo->flags & MULTIBOOT_MEMORY)
@@ -99,7 +126,56 @@ void _main(unsigned long magic, multiboot_info_t *pInfo)
       k_printf("Not a multiboot bootloader\n");
       while(1);
    }
-   print_multiboot(pInfo);
+   //print_multiboot(pInfo);
+
+   /* set up the global descriptor table */
+   GDT_Init();
+   /* first the memory protection segments */
+   GDT_SetSegment(KERNEL_CODE_SEGMENT,
+                  KERNEL_CODE_BASE,
+                  KERNEL_CODE_LIMIT,
+                  DESCRIPTOR_CODE_EO,
+                  PRIVILEGE_LEVEL_KERNEL);
+   GDT_SetSegment(KERNEL_DATA_SEGMENT,
+                  KERNEL_DATA_BASE,
+                  KERNEL_DATA_LIMIT,
+                  DESCRIPTOR_DATA_RW,
+                  PRIVILEGE_LEVEL_KERNEL);
+   GDT_SetSegment(USER_CODE_SEGMENT,
+                  USER_CODE_BASE,
+                  USER_CODE_LIMIT,
+                  DESCRIPTOR_CODE_EO,
+                  PRIVILEGE_LEVEL_USER);
+   GDT_SetSegment(USER_DATA_SEGMENT,
+                  USER_DATA_BASE,
+                  USER_DATA_LIMIT,
+                  DESCRIPTOR_DATA_RW,
+                  PRIVILEGE_LEVEL_USER);
+   /* and now the task state segments */
+   GDT_SetTSS(    KERNEL_TSS_SEGMENT,
+                  &osTSS,
+                  PRIVILEGE_LEVEL_KERNEL);
+   GDT_SetTSS(    USER_TSS_SEGMENT,
+                  &userTSS,
+                  PRIVILEGE_LEVEL_USER);
+
+   ISR_Init();
+   IDT_Init(SEGMENT_INDEX(KERNEL_CODE_SEGMENT, 0, PRIVILEGE_LEVEL_KERNEL));
+   GDT_Load(SEGMENT_INDEX(KERNEL_CODE_SEGMENT, 0, PRIVILEGE_LEVEL_KERNEL),
+            SEGMENT_INDEX(KERNEL_DATA_SEGMENT, 0, PRIVILEGE_LEVEL_KERNEL));
+
+   // load the task segment for the kernel task
+   unsigned int ostss_index = SEGMENT_INDEX(KERNEL_TSS_SEGMENT, 0, PRIVILEGE_LEVEL_KERNEL);
+   LOAD_TASK_REGISTER(ostss_index);
+
+   unsigned int task_sel[2];
+   task_sel[0] = 0;
+   task_sel[1] = SEGMENT_INDEX(USER_TSS_SEGMENT, 0, PRIVILEGE_LEVEL_USER);
+
+   __ASM("ljmp *(%0)\n" :: "am"(task_sel));
+
+   // should never get here
+   k_printf("ERROR!\n");
    while(1);
 }
 

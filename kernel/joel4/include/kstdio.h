@@ -55,24 +55,11 @@ void k_hexout(const char* pBuffer, unsigned int length);
 
 void halt();
 
-//#define fputs(_a, _b) k_putchar(_a)
-
-#ifdef WIN32
-   #define __ASM /##/
-   #define _ENABLE_INTERRUPTS()
-   #define _DISABLE_INTERRUPTS()
-   #define __PACKED
-   #define READ_REGISTER_PTR(_reg, _var)
-#else
-   //#define stdout 0
-   //#define stderr 1
-   #define __ASM asm
-   #define _ENABLE_INTERRUPTS() __ASM("sti");
-   #define _DISABLE_INTERRUPTS() __ASM("cli");
-   #define __PACKED __attribute__((packed))
-   #define READ_REGISTER_PTR(_reg, _var) __ASM("movl %%" _reg ", %%eax\n movl %%eax, %0" :: "am"(_var))
-
-#endif // WIN32
+#define __ASM asm
+#define _ENABLE_INTERRUPTS() __ASM("sti");
+#define _DISABLE_INTERRUPTS() __ASM("cli");
+#define __PACKED __attribute__((packed))
+#define READ_REGISTER_PTR(_reg, _var) __ASM("movl %%" _reg ", %%eax\n movl %%eax, %0" :: "am"(_var))
 
 #ifdef __cplusplus
 }
