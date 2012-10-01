@@ -1,5 +1,7 @@
 #include "l4.h"
 #include "multiboot.h"
+#include "kstdio.h"
+#include "serial.h"
 
 void print_multiboot(const multiboot_info_t *pInfo)
 {
@@ -80,11 +82,14 @@ void print_multiboot(const multiboot_info_t *pInfo)
 
 }
 
-#define _KOS_BUILD 2000
+#define _KOS_BUILD 2001
 
 void _main(unsigned long magic, multiboot_info_t *pInfo)
 {
    k_cls();   // Clear the screen
+
+   if (serial_init() != 0)
+      k_printf("Serial failed\n");
 
    k_printf("KOS version 1.0.%i\n", _KOS_BUILD);
 

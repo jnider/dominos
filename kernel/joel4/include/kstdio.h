@@ -9,15 +9,11 @@
 #ifndef _STDIO__H
 #define _STDIO__H
 
-#include <stddef.h>
-
 #define __KERNEL_RETURN()              __ASM("leave\nlret\n")
 
 #define SEGMENT_INDEX(_index, _ldt, _priv)  ((_index << 3) | (_ldt << 2) | _priv)   ///< makes a segment index
 
-#ifndef WIN32
-//typedef long unsigned int size_t; // JKN - leave this for the stdlib (pdclib)
-#endif // WIN32
+typedef long unsigned int size_t; // JKN - leave this for the stdlib (pdclib)
 
 #ifdef __cplusplus
 extern "C" {
@@ -41,12 +37,12 @@ int k_atoi(const char* a);
 int substring (const char *s1, const char *s2);
 
 // port functions
-void outportb (unsigned short port, unsigned char data);
-unsigned char inportb(unsigned short port);
-//void outports (unsigned short port, unsigned short data);
-//unsigned short inports(unsigned short port);
-void outportl (unsigned short port, unsigned long data);
-unsigned long inportl(unsigned short port);
+void outb (unsigned short port, unsigned char data);
+unsigned char inb(unsigned short port);
+//void outs (unsigned short port, unsigned short data);
+//unsigned short ins(unsigned short port);
+void outl (unsigned short port, unsigned long data);
+unsigned long inl(unsigned short port);
 
 void * kmalloc(int size);
 void kfree( void * ptr );

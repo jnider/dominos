@@ -6,6 +6,7 @@
 
 C_SRC = kernel.c \
          kstdio.c \
-         kvideo.c
+         kvideo.c \
+         serial.c
 
 S_SRC = boot.s

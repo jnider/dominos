@@ -8,12 +8,7 @@
 
 #include "kstdio.h"
 #include "kvideo.h"
-//#include "uart.h"
-
-#ifdef WIN32
-#include <windows.h>
-#include <stdio.h>
-#endif // WIN32
+#include "serial.h"
 
 char _digits[] = "0123456789ABCDEFGHIJKLMNOPQRSTUVWXYZ";
 
@@ -61,7 +56,7 @@ void k_memcpy(void* dest, const void* src, int size)
 ///@date    11-Jun-2007 03:53:34 PM
 ///@brief   Outputs a byte to memory mapped I/O
 //////////
-void outportb (unsigned short _port, unsigned char _data)
+void outb (unsigned short _port, unsigned char _data)
 {
     __ASM __volatile__ ("outb %1, %0" : : "dN" (_port), "a" (_data));
 }
@@ -71,7 +66,7 @@ void outportb (unsigned short _port, unsigned char _data)
 ///@date    11-Jun-2007 03:53:54 PM
 ///@brief   Reads a byte from memory mapped I/O
 //////////
-unsigned char inportb(unsigned short port)
+unsigned char inb(unsigned short port)
 {
    unsigned char rv;
    __ASM __volatile__ ("inb %1, %0" : "=a" (rv) : "dN" (port));
@@ -83,7 +78,7 @@ unsigned char inportb(unsigned short port)
 ///@date    11-Jun-2007 03:53:34 PM
 ///@brief   Outputs a dword to memory mapped I/O
 //////////
-void outportl (unsigned short _port, unsigned long _data)
+void outl (unsigned short _port, unsigned long _data)
 {
     __ASM __volatile__ ("outl %1, %0" : : "dN" (_port), "a" (_data));
 }
@@ -93,7 +88,7 @@ void outportl (unsigned short _port, unsigned long _data)
 ///@date    11-Jun-2007 03:53:54 PM
 ///@brief   Reads a dword from memory mapped I/O
 //////////
-unsigned long inportl(unsigned short port)
+unsigned long inl(unsigned short port)
 {
    unsigned long rv;
    __ASM __volatile__ ("inl %1, %0" : "=a" (rv) : "dN" (port));
@@ -109,14 +104,6 @@ unsigned long inportl(unsigned short port)
 ////////////////////////////////////////////////////////////////////////////////
 void k_printf (const char *format, ...)
 {
-#ifdef WIN32
-   char temp[1024];
-   va_list list;
-   va_start(list, format);
-   vsprintf(temp, format, list);
-   OutputDebugString(temp);
-   va_end(list);
-#else
    char **arg = (char **) (&format);
    int c;
    char buf[20];
@@ -127,7 +114,7 @@ void k_printf (const char *format, ...)
    {
       if (c != '%')
       {
-         //UARTTransmit(COM1, c);
+         serial_putc(c);
          k_putchar(c);
       }
       else
@@ -161,18 +148,18 @@ void k_printf (const char *format, ...)
             string:
                while (*p)
                {
-                  //UARTTransmit(COM1, *p);
+                  serial_putc(*p);
                   k_putchar(*p++);
                }
             break;
 
          default:
+            serial_putc(*((int *) arg));
             k_putchar(*((int *) arg++));
             break;
          }
       }
    }
-#endif // WIN32
 }
 
 /*
@@ -430,10 +417,10 @@ void k_hexout(const char* pBuffer, unsigned int length)
 
 char* k_strtok(char* s1, const char* s2)
 {
-    static char * tmp = NULL;
+    static char * tmp = 0;
     const char * p = s2;
 
-    if ( s1 != NULL )
+    if ( s1 != 0 )
     {
         /* new string */
         tmp = s1;
@@ -441,10 +428,10 @@ char* k_strtok(char* s1, const char* s2)
     else
     {
         /* old string continued */
-        if ( tmp == NULL )
+        if ( tmp == 0 )
         {
             /* No old string, no new string, nothing to do */
-            return NULL;
+            return 0;
         }
         s1 = tmp;
     }
@@ -465,7 +452,7 @@ char* k_strtok(char* s1, const char* s2)
     if ( ! *s1 )
     {
         /* no more to parse */
-        return ( tmp = NULL );
+        return ( tmp = 0 );
     }
 
     /* skipping non-s2 characters */
@@ -486,7 +473,7 @@ char* k_strtok(char* s1, const char* s2)
     }
 
     /* parsed to end of string */
-    tmp = NULL;
+    tmp = 0;
     return s1;
 }
 
@@ -501,7 +488,7 @@ void * k_memchr(const void * s, int c, size_t n)
         }
         ++p;
     }
-    return NULL;
+    return 0;
 }
 
 int isspace(char c)
@@ -518,7 +505,7 @@ int k_atoi(const char* s)
    while ( isspace( *s ) ) ++s;
    if ( *s == '+' ) ++s;
    else if ( *s == '-' ) sign = *(s++);
-   while ( ( x = (char*)k_memchr( _digits, *(s++), 10 ) ) != NULL )
+   while ( ( x = (char*)k_memchr( _digits, *(s++), 10 ) ) != 0 )
    {
       rc = rc * 10 + ( x - _digits );
    }
