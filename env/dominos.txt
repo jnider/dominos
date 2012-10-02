@@ -1,12 +1,39 @@
-August 16, 2012
-Build the system
-Using virtualbox VirtualBox-4.1.18-78361-Win.exe on windows XP
-Downloaded &installed the virtualbox extension pack
-Installed ubuntu-12.04-desktop-i386.iso
-Installed 'git' with: sudo apt-get install git
-set up .gitconfig
-git config --global user.name "Joel Nider"
-git config --global user.email "joel@xxx"
+October 2, 2012
+I started the JOEL4 kernel from scratch, and then copied over certain files from KOS to
+get things going a bit faster.  It now boots!  I can even get to userspace, even though
+it doesn't do anything once it gets there.  Now I can concentrate on how to bring up the
+rest of the system.  I know the components I need, just have to figure out how to put
+them all together.  I want this system to be flexible, so I can boot from a CD or HD or
+USB etc. and of course from different file systems.  I know I can replace the media
+driver and file system driver to be able to handle every case, so I want to package those
+in an initial file like initrd on linux or whatever they are calling it these days.  I
+saw they are using the cpio format, which is like tar but simpler.  I think I will use
+that as well, since it looks like it answers all of my needs as well.  So the hard part
+now is figuring out how to start loading userspace applications.  Assuming I can load
+all the modules into memory with the bootloader (which still isn't working by the way)
+I have to figure out how to give each one its own memory space.  Obviously I will use
+the kernel API's for that, but who is going to call them?  I need some kind of loader.
+And I have been down this road before with KOS, and got a bit stuck with mapping page
+tables automatically for new tasks.  I hope it will go smoother this time.
+On the positive side, I borrowed the serial port driver from syslinux, and it worked
+almost immediately.  I had to make one small change to the order of the outb()
+parameters, and then it just worked.  So I now have a decent level of visibility into
+my kernel, and I'm ready to start implementing some higher functionality.
+
+Sept 25, 2012
+Tried to use the sel4 kernel from OK labs to save time.  It doesn't boot right, so I
+have to find another solution.  I found one of my old KOS kernels, and it booted right
+away using the same boot loader (SYSLINUX+mboot.c32) so I know my script, image, method
+etc are correct.  I then tried Fiasco.OC and was able to boot that one too, so there is
+definately a problem with the sel4 build I'm using.  Anyway, we're almost set up to be
+able to use 3 different kernels interchangably.
+
+Sept 13, 2012
+One more problem.  I found out that if I perform the above steps, the kernel does not
+automatically recognize the partitions and create /dev/loop0p1 for me.  I also found
+out several kernel patches have been proposed, and none have yet been accepted for
+some reason.  At least partx does the job, and has been added to the script.  And
+now Virtualbox is up to 4.1.22, and we're running on Windows 7.
 
 Sept 10, 2012
 I tried a million ways to use parted, fdisk, cfdisk, sfdisk to make a simple boot disk.
@@ -19,17 +46,13 @@ partition, then using syslinux to put a boot loader on it.  Now it is all wrappe
 convenient script 'makeimage.sh' which performs all of these steps, and additionally puts
 the kernel, and creates an iso image ready for booting from a CD.
 
-Sept 13, 2012
-One more problem.  I found out that if I perform the above steps, the kernel does not
-automatically recognize the partitions and create /dev/loop0p1 for me.  I also found
-out several kernel patches have been proposed, and none have yet been accepted for
-some reason.  At least partx does the job, and has been added to the script.  And
-now Virtualbox is up to 4.1.22, and we're running on Windows 7.
+August 16, 2012
+Build the system
+Using virtualbox VirtualBox-4.1.18-78361-Win.exe on windows XP
+Downloaded &installed the virtualbox extension pack
+Installed ubuntu-12.04-desktop-i386.iso
+Installed 'git' with: sudo apt-get install git
+set up .gitconfig
+git config --global user.name "Joel Nider"
+git config --global user.email "joel@xxx"
 
-Sept 25, 2012
-Tried to use the sel4 kernel from OK labs to save time.  It doesn't boot right, so I
-have to find another solution.  I found one of my old KOS kernels, and it booted right
-away using the same boot loader (SYSLINUX+mboot.c32) so I know my script, image, method
-etc are correct.  I then tried Fiasco.OC and was able to boot that one too, so there is
-definately a problem with the sel4 build I'm using.  Anyway, we're almost set up to be
-able to use 3 different kernels interchangably.
