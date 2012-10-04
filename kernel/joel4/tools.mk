@@ -11,3 +11,4 @@ LD=ld
 AS=as
 
 CFLAGS+=-fno-stack-protector
+CFLAGS+=-ffreestanding			# ignore built-in functions, stdlib, etc
