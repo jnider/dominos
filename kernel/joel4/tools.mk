@@ -9,6 +9,7 @@
 CC=gcc
 LD=ld
 AS=as
+CTAGS=ctags
 
 CFLAGS+=-fno-stack-protector
 CFLAGS+=-ffreestanding			# ignore built-in functions, stdlib, etc

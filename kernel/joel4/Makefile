@@ -16,10 +16,14 @@ OUTPUT_DIR=objs
 all: output_dir $(OBJS)
 	$(LD) $(OBJS) -T joel4.ld -o joel4.elf
 
-
 output_dir:
 	if [ ! -d $(OUTPUT_DIR) ]; then mkdir -p $(OUTPUT_DIR); fi
 
 clean:
 	rm -rf $(OUTPUT_DIR)
 	rm -rf joel4.elf
+
+.PHONY: tags
+
+tags:
+	$(CTAGS) -f tags src/* include/*
