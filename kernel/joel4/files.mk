@@ -10,7 +10,8 @@ C_SRC = kernel.c \
          serial.c \
          gdt.c    \
          idt.c    \
-         isr.c
+         isr.c    \
+         memory.c
 
 S_SRC = boot.s    \
          isr_stub.s
