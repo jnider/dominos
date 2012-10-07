@@ -7,7 +7,14 @@
 typedef unsigned int PageTable;
 typedef unsigned int PageDirectory[PAGE_SIZE/sizeof(unsigned int)];
 
-void k_initMemory(PageDirectory* pPageDir);
+typedef enum PagingMethod
+{
+   PAGING_4K_NORMAL,
+   PAGING_2M_PAE,
+   PAGING_4M_PSE
+} PagingMethod;
+
+int k_initMemory(PageDirectory* pageDir, PagingMethod method);
 
 #endif /* _MEMORY__H */
 

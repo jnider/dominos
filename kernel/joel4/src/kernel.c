@@ -7,6 +7,7 @@
 #include "isr.h"                       // interrupt routines
 #include "task.h"
 #include "memory.h"
+#include "cpu.h"
 
 #define LOAD_TASK_REGISTER(_index)  __ASM("ltr %0\n" :: "am"(_index))
 
@@ -30,6 +31,7 @@
 
 static tss_t osTSS __attribute__((aligned(128)));
 static tss_t userTSS __attribute__((aligned(128)));
+static cpu_info cpuInfo;
 int kernel_data_segment = KERNEL_DATA_SEGMENT;
 
 static void print_multiboot(const multiboot_info_t *pInfo)
@@ -132,6 +134,9 @@ void _main(unsigned long magic, multiboot_info_t *pInfo)
    }
    //print_multiboot(pInfo);
 
+   /* find out who we are dealing with */
+   k_identifyCPU(&cpuInfo);
+
    /* set up the global descriptor table */
    k_printf("Init GDT\n");
    GDT_Init();
@@ -179,7 +184,16 @@ void _main(unsigned long magic, multiboot_info_t *pInfo)
 
    /* initialize memory, and enable paging */
    k_printf("Initializing memory\n");
-   k_initMemory(&kernelPageDir);
+   if (cpuInfo.pse)
+   {
+      k_printf("PSE supported\n");
+      k_initMemory(&kernelPageDir, PAGING_4M_PSE);
+   }
+   else
+   {
+      k_printf("PSE not detected - this is an old machine\n");
+      k_initMemory(&kernelPageDir, PAGING_4K_NORMAL);
+   }
    k_printf("Paging on\n");
 
    /* now start user space, effectively running the first task (root task) */
