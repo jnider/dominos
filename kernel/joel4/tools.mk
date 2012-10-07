@@ -11,5 +11,6 @@ LD=ld
 AS=as
 CTAGS=ctags
 
-CFLAGS+=-fno-stack-protector
-CFLAGS+=-ffreestanding			# ignore built-in functions, stdlib, etc
+CFLAGS+=-fno-stack-protector # stack protector functions are not implemented yet
+CFLAGS+=-nostdinc # don't include paths other than what I tell you
+CFLAGS+=-ffreestanding # ignore built-in functions, stdlib, etc

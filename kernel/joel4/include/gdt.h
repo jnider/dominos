@@ -78,7 +78,7 @@ struct __PACKED tss_t
    unsigned short ss2;
    unsigned short reserved3;
    unsigned long  pdbr;                // page directory base register
-   unsigned long  eip;                 // ip of the task
+   unsigned long  eip;                 // instruction pointer of the task
    unsigned long  eflags;              // see EFLAGS_ below
    unsigned long  eax;                 // general purpose registers
    unsigned long  ecx;
@@ -86,21 +86,21 @@ struct __PACKED tss_t
    unsigned long  ebx;
    unsigned long  esp;
    unsigned long  ebp;
-   unsigned long  esi;
-   unsigned long  edi;
+   unsigned long  esi;                 // source index
+   unsigned long  edi;                 // destination index
    unsigned short es;                  // segment selectors
    unsigned short reserved4;
-   unsigned short cs;
+   unsigned short cs;                  // code segment
    unsigned short reserved5;
-   unsigned short ss;
+   unsigned short ss;                  // stack segment
    unsigned short reserved6;
-   unsigned short ds;
+   unsigned short ds;                  // data segment
    unsigned short reserved7;
-   unsigned short fs;
+   unsigned short fs;                  // other segment
    unsigned short reserved8;
-   unsigned short gs;
+   unsigned short gs;                  // another segment
    unsigned short reserved9;
-   unsigned short ldt;                 // segment selector for ldt
+   unsigned short ldt;                 // segment selector for local descriptor table
    unsigned short reserved10;
    unsigned short debug;               // setting bit 0 causes a debug exception when this task is run
    unsigned short io_map;
