@@ -1,3 +1,6 @@
+October 4, 2012
+apt-get install exuberant-ctags
+
 October 2, 2012
 I started the JOEL4 kernel from scratch, and then copied over certain files from KOS to
 get things going a bit faster.  It now boots!  I can even get to userspace, even though
