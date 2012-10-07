@@ -5,6 +5,8 @@
 #include "gdt.h"                       // for managing global descriptor table
 #include "idt.h"                       // for managing interrupt descriptor table
 #include "isr.h"                       // interrupt routines
+#include "task.h"
+#include "memory.h"
 
 #define LOAD_TASK_REGISTER(_index)  __ASM("ltr %0\n" :: "am"(_index))
 
@@ -111,6 +113,8 @@ static void print_multiboot(const multiboot_info_t *pInfo)
 
 #define _KOS_BUILD 2001
 
+static PageDirectory kernelPageDir __attribute__((aligned(4096)));
+
 void _main(unsigned long magic, multiboot_info_t *pInfo)
 {
    k_cls();   // Clear the screen
@@ -129,6 +133,7 @@ void _main(unsigned long magic, multiboot_info_t *pInfo)
    //print_multiboot(pInfo);
 
    /* set up the global descriptor table */
+   k_printf("Init GDT\n");
    GDT_Init();
    /* first the memory protection segments */
    GDT_SetSegment(KERNEL_CODE_SEGMENT,
@@ -152,6 +157,7 @@ void _main(unsigned long magic, multiboot_info_t *pInfo)
                   DESCRIPTOR_DATA_RW,
                   PRIVILEGE_LEVEL_USER);
    /* and now the task state segments */
+   k_printf("Setting TSS\n");
    GDT_SetTSS(    KERNEL_TSS_SEGMENT,
                   &osTSS,
                   PRIVILEGE_LEVEL_KERNEL);
@@ -160,14 +166,23 @@ void _main(unsigned long magic, multiboot_info_t *pInfo)
                   PRIVILEGE_LEVEL_USER);
 
    ISR_Init();
+   k_printf("Loading IDT\n");
    IDT_Init(SEGMENT_INDEX(KERNEL_CODE_SEGMENT, 0, PRIVILEGE_LEVEL_KERNEL));
+   k_printf("Loading GDT\n");
    GDT_Load(SEGMENT_INDEX(KERNEL_CODE_SEGMENT, 0, PRIVILEGE_LEVEL_KERNEL),
             SEGMENT_INDEX(KERNEL_DATA_SEGMENT, 0, PRIVILEGE_LEVEL_KERNEL));
 
    // load the task segment for the kernel task
+   k_printf("Loading TSS\n");
    unsigned int ostss_index = SEGMENT_INDEX(KERNEL_TSS_SEGMENT, 0, PRIVILEGE_LEVEL_KERNEL);
    LOAD_TASK_REGISTER(ostss_index);
 
+   /* initialize memory, and enable paging */
+   k_printf("Initializing memory\n");
+   k_initMemory(&kernelPageDir);
+   k_printf("Paging on\n");
+
+   /* now start user space, effectively running the first task (root task) */
    unsigned int task_sel[2];
    task_sel[0] = 0;
    task_sel[1] = SEGMENT_INDEX(USER_TSS_SEGMENT, 0, PRIVILEGE_LEVEL_USER);
