@@ -114,6 +114,8 @@ void k_printf (const char *format, ...)
    {
       if (c != '%')
       {
+         if (c == '\n')
+            serial_putc('\r');
          serial_putc(c);
          k_putchar(c);
       }
