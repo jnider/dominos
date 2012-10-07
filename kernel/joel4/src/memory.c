@@ -53,7 +53,8 @@
 #define TOTAL_KERNEL_MEMORY         0x400000 /* 4MB should be enough for anybody */
 
 static unsigned char bitmap[(TOTAL_KERNEL_MEMORY/PAGE_SIZE)/sizeof(char)];  // replace this with the define MEMORY_MAP_PHYS
-static unsigned int nextFreePage = 0;
+static PageTable kernelPageTable0 __attribute__((aligned(4096)));
+static unsigned int nextFreePage = (unsigned int)&kernelPageTable0;
 ////////////////////////////////////////////////////////////////////////////////
 /// @date   03/09/2008
 /// @short  Map the logical address to the physical address - only in real mode
@@ -91,7 +92,7 @@ __inline PageDirectory* k_getPageDirectory(void)
 
 __inline int k_isTablePresent(PageDirectory* pLogicalDir, unsigned int tableIndex)
 {
-   return pLogicalDir[tableIndex] & MEMORY_PAGE_TABLE_PRESENT;
+   return (*pLogicalDir[tableIndex]) & MEMORY_PAGE_TABLE_PRESENT;
 }
 
 __inline unsigned int readCR0(void)
@@ -174,8 +175,8 @@ PageTable* k_realCreatePageTable(PageDirectory* pDir, unsigned int index, int gl
    int i;
    PageTable* pPageTable;
 
-   //k_printf("k_realCreatePageTable\n");
-   if (pDir[index] & MEMORY_PAGE_TABLE_PRESENT)
+   k_printf("k_realCreatePageTable\n");
+   if (*pDir[index] & MEMORY_PAGE_TABLE_PRESENT)
    {
       k_printf("table already exists\n");
       return 0;
@@ -186,6 +187,7 @@ PageTable* k_realCreatePageTable(PageDirectory* pDir, unsigned int index, int gl
    k_markPhysPageUsed((unsigned int)pPageTable);
 
    // initialize it
+   k_printf("createPageTable init\n");
    if (global)
    {
       for (i=0; i < PAGE_TABLE_MAX_ENTRIES; i++)
@@ -198,9 +200,9 @@ PageTable* k_realCreatePageTable(PageDirectory* pDir, unsigned int index, int gl
    }
 
    // set the page in the page directory
-   pDir[index] |= (unsigned int)pPageTable | MEMORY_PAGE_TABLE_PRESENT;
+   *pDir[index] |= (unsigned int)pPageTable | MEMORY_PAGE_TABLE_PRESENT;
 
-   //k_printf("Created kernel page table 0x%x at: 0x%x\n", index, pPageTable);
+   k_printf("Created kernel page table 0x%x at: 0x%x\n", index, pPageTable);
 
    return pPageTable;
 }
@@ -212,10 +214,10 @@ static void k_realMapAddr(PageDirectory* pPageDirectory, unsigned int physical, 
    // make sure the table is present
    unsigned int tableIndex = GET_PAGE_TABLE_INDEX(logical);
 
-	if (!(pPageDirectory[tableIndex] & MEMORY_PAGE_TABLE_PRESENT))
+	if (!(*pPageDirectory[tableIndex] & MEMORY_PAGE_TABLE_PRESENT))
    {
       //k_printf("Table %i not present\n", tableIndex);
-      if (GET_DISK_LOCATION(pPageDirectory[tableIndex]) == 0)
+      if (GET_DISK_LOCATION(*pPageDirectory[tableIndex]) == 0)
       {
          k_printf("table not created\n");
          HALT();
@@ -229,7 +231,7 @@ static void k_realMapAddr(PageDirectory* pPageDirectory, unsigned int physical, 
    }
 
    // bits 22-31 in the linear address is the index of the page table
-   PageTable* pTable = (PageTable*)GET_DISK_LOCATION(pPageDirectory[tableIndex]);
+   PageTable* pTable = (PageTable*)GET_DISK_LOCATION(*pPageDirectory[tableIndex]);
    //k_printf("table: 0x%x\n", pTable);
 
    // bits 12-21 in the linear address is the entry into the page table
@@ -277,14 +279,16 @@ static void KernelUnmapAddr(unsigned int logical)
 }
 */
 
-void k_initMemory(unsigned int size, PageDirectory* pPageDir)
+void k_initMemory(PageDirectory* pPageDir)
 {
    unsigned int i;
 
    // initialize the page directory with empty tables
+   k_printf("initializating\n");
    for (i=0; i < PAGE_DIRECTORY_MAX_ENTRIES; i++)
-      pPageDir[i] = MEMORY_PAGE_TABLE_USER_MODE | MEMORY_PAGE_TABLE_GLOBAL | MEMORY_PAGE_TABLE_WRITE;
+      *pPageDir[i] = MEMORY_PAGE_TABLE_USER_MODE | MEMORY_PAGE_TABLE_GLOBAL | MEMORY_PAGE_TABLE_WRITE;
 
+   k_printf("calling createPageTable\n");
    PageTable* pTable = k_realCreatePageTable(pPageDir, 0, 1);
 	k_printf("page dir: 0x%x\n", pPageDir);
 	k_printf("page table 0: 0x%x\n", pTable);

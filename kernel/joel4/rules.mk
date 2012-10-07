@@ -9,9 +9,9 @@ S_OBJS=$(S_SRC:%.s=objs/%.o)
 OBJS=$(S_OBJS) $(C_OBJS)
 
 objs/%.o: src/%.s
-	echo "Assembling $<"
-	$(AS) $(ASMFLAGS) $(INCLUDE_PATHS) -c $< -o $@
+	@echo "Assembling $<"
+	@$(AS) $(ASMFLAGS) $(INCLUDE_PATHS) -c $< -o $@
 
 objs/%.o: src/%.c
-	echo "Compiling $<"
-	$(CC) $(CFLAGS) $(INCLUDE_PATHS) -c $< -o $@
+	@echo "Compiling $<"
+	@$(CC) $(CFLAGS) $(INCLUDE_PATHS) -c $< -o $@
