@@ -1,3 +1,19 @@
+October 10, 2012
+Making progress on root task and boot task.  I had to implement memory allocation inside
+the kernel - borrowed from KOS.  I looked at the fiasco implementation, and their 'task'
+and 'thread' are separate entities, whereas they were one entity in KOS.  This all comes
+down to the way threads are implemented.  I want to have user-space threads, meaning a
+single task must split its timeslice between all its own threads.  I don't like this
+idea of each thread being equal, because it steals time from other apps that may only
+have a single thread.  I created the page directory for the root task, and after the
+first task switch I now get a page fault (I'm assuming its because there is no stack).
+So it looks like I will have to set up at least enough page tables for the stack and
+code for the new task in the kernel.  KOS had done this as well, but not very well. Also
+it looks like fiasco has the scheduler inside the kernel.  I want to only have task
+switching as part of the kernel, so we'll see how that turns out.  Scheduler implies
+policy, and policy should be outside the kernel.  I haven't investigated this too much
+yet though, so for now its just thoughts for the future.
+
 October 4, 2012
 apt-get install exuberant-ctags
 
