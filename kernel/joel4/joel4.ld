@@ -2,7 +2,7 @@
 /* JNider: August 25, 2012 */
 
 
-_boot_sys_start = 0x200000;
+_boot_sys_start = 0x100000;
 
 ENTRY(_entry_point)
 
@@ -13,6 +13,7 @@ PHDRS {
 
 SECTIONS {
    . = _boot_sys_start;
+
    .text_boot : ALIGN(0x1000)
    {
       objs/boot.o (.text .text.* .gnu.linkonce.t.*)
@@ -23,13 +24,35 @@ SECTIONS {
    {
       objs/boot.o (.bss)
       . = ALIGN(0x1000);
-      PROVIDE(_boot_sys_end = .);
    } : bdata
+
+   .text ALIGN (0x1000) :
+   {
+      *(.text)
+   }
+
+   .rodata ALIGN (0x1000) :
+   {
+      *(.rodata)
+   }
+
+   .data ALIGN (0x1000) :
+   {
+      *(.data)
+   }
+
+   .bss :
+   {
+      *(COMMON)
+      *(.bss)
+   }
 
    /* leave 4K for the kernel stack - counts down*/
    . = ALIGN(0x1000);
    _kernelStackStart = .;
    . += 0x1000;
    _kernelStack = .;
+
+   _endKernel = .;
 }
 

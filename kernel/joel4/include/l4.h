@@ -7,6 +7,11 @@ typedef enum bool { FALSE, TRUE } bool;
 
 typedef uint32 L4_CPtr;
 typedef uint32 L4_MessageInfo;
+typedef uint32 L4_VMAttributes;
+
+typedef uint32 L4_Page;
+typedef uint32 L4_PageTable;
+typedef uint32 L4_PageDirectory;
 
 typedef void* L4_Memory;
 typedef void* L4_CapData;
@@ -87,7 +92,10 @@ inline int L4_CNode_SaveCaller(L4_CapDescriptor* cap);
 
 /* Debug */
 inline void L4_DebugHalt(void);
-inline void L4_DebugPutChar(char c);
+static inline void L4_DebugPutChar(char c)
+{
+   asm volatile ("sysenter\n":::);
+}
 
 /* IRQ */
 inline int L4_IRQControl_Get(L4_IRQControl service, int irq, L4_CNode root, uint32 index, uint8 depth);
@@ -108,6 +116,7 @@ inline int L4_TCB_WriteRegisters(L4_TCB service, bool resume, uint8 flags, uint3
 L4_Memory L4_UntypedRetype(L4_Untyped service, int type, int sizeBits, L4_CNode root, int nodeIndex, int nodeDepth, int nodeOffset, int nodeWindow);
 
 #ifdef ARCH_IA32
+/* IO space */
 inline int L4_IA32_ASIDControl_MakePool(L4_IA32_ASIDControl service, L4_Untyped untyped, L4_CNode root, uint32 index, uint8 depth);
 inline int L4_IA32_ASIDPool_Assign(L4_IA32_ASIDPool service, L4_IA32_PageDirectory vroot);
 inline uint8 L4_IA32_IOPort_In8(L4_IA32_IOPort service, uint16 port);
@@ -118,11 +127,13 @@ inline uint8 L4_IA32_IOPort_Out16(L4_IA32_IOPort service, uint16 port, uint16 da
 inline uint8 L4_IA32_IOPort_Out32(L4_IA32_IOPort service, uint16 port, uint32 data);
 inline int L4_IA32_IOPageTable_Map(L4_IA32_IOPageTable service, L4_IA32_IOSpace iospace, uint32 ioaddr);
 inline int L4_IA32_Page_MapIO(L4_IA32_Page service, L4_IA32_IOSpace iospace, L4_CapRights rights, uint32 ioaddr);
-inline int L4_IA32_Page_Map(L4_IA32_Page service, L4_IA32_PageDirectory pd, uint32 vaddr, L4_CapRights rights, L4_IA32_VMAttributes attr);
-inline int L4_IA32_Page_Remap(L4_IA32_Page service, L4_IA32_PageDirectory pd, L4_CapRights rights, L4_IA32_VMAttributes attr);
-inline int L4_IA32_Page_Unmap(L4_IA32_Page service);
-inline int L4_IA32_PageTable_Map(L4_IA32_PageTable service, L4_IA32_PageTable pd, uint32 vaddr, L4_IA32_VMAttributes attr);
 #endif
+
+/* memory space */
+inline int L4_Page_Map(L4_Page service, L4_PageDirectory pd, uint32 vaddr, L4_CapRights rights, L4_VMAttributes attr);
+inline int L4_Page_Remap(L4_Page service, L4_PageDirectory pd, L4_CapRights rights, L4_VMAttributes attr);
+inline int L4_Page_Unmap(L4_Page service);
+inline int L4_PageTable_Map(L4_PageTable service, L4_PageTable pd, uint32 vaddr, L4_VMAttributes attr);
 
 #ifdef ARCH_ARM
 #endif

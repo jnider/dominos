@@ -44,8 +44,11 @@ unsigned char inb(unsigned short port);
 void outl (unsigned short port, unsigned long data);
 unsigned long inl(unsigned short port);
 
-void * kmalloc(int size);
-void kfree( void * ptr );
+/* memory management functions */
+void k_initHeap(int address, int size);
+void* kmalloc(int size);
+void kfree(void* ptr);
+unsigned int k_freeMem(void);
 void k_itoa (char *buf, int base, int d);
 
 void pause();
