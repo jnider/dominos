@@ -29,10 +29,14 @@
 #define USER_DATA_BASE      0             /* user data segment base address */
 #define USER_DATA_LIMIT     0xFFFFFFFF    /* user data segment limit */
 
+static unsigned int kernelPageDir[PAGE_SIZE/sizeof(unsigned int)] __attribute__((aligned(4096)));
 static tss_t osTSS __attribute__((aligned(128)));
 static tss_t userTSS __attribute__((aligned(128)));
 static cpu_info cpuInfo;
 int kernel_data_segment = KERNEL_DATA_SEGMENT;
+extern int _endKernel; /* provided by the linker script to mark the end of the loadable portions of the kernel */
+
+extern void root_task_main(void);
 
 static void print_multiboot(const multiboot_info_t *pInfo)
 {
@@ -113,12 +117,19 @@ static void print_multiboot(const multiboot_info_t *pInfo)
 
 }
 
-#define _KOS_BUILD 2001
+static void SysCall(void)
+{
+   k_printf("SysCall\n");
+}
 
-static PageDirectory kernelPageDir __attribute__((aligned(4096)));
+#define _KOS_BUILD 2002
 
 void _main(unsigned long magic, multiboot_info_t *pInfo)
 {
+   int freeHeap;
+   unsigned int freePages;
+   task_t* rootTask;
+
    k_cls();   // Clear the screen
 
    if (serial_init() != 0)
@@ -182,21 +193,46 @@ void _main(unsigned long magic, multiboot_info_t *pInfo)
    unsigned int ostss_index = SEGMENT_INDEX(KERNEL_TSS_SEGMENT, 0, PRIVILEGE_LEVEL_KERNEL);
    LOAD_TASK_REGISTER(ostss_index);
 
+   /* calculate free space, and set up heap */
+   freePages = KERNEL_MEMORY_LIMIT - FREE_PAGE_COUNT * PAGE_SIZE;
+   freeHeap = freePages - (unsigned int)&_endKernel;
+   k_initHeap((int)&_endKernel, freeHeap);
+   k_printf("Freemem: %i\n", k_freeMem());
+
    /* initialize memory, and enable paging */
    k_printf("Initializing memory\n");
    if (cpuInfo.pse)
    {
       k_printf("PSE supported\n");
-      k_initMemory(&kernelPageDir, PAGING_4M_PSE);
+      k_initMemory(kernelPageDir, KERNEL_MEMORY_LIMIT, PAGING_4M_PSE, freePages);
    }
    else
    {
-      k_printf("PSE not detected - this is an old machine\n");
-      k_initMemory(&kernelPageDir, PAGING_4K_NORMAL);
+      k_printf("PSE not detected - see code WARNING_KERNEL_NO_PSE on the wiki\n");
+      HALT();
    }
-   k_printf("Paging on\n");
+
+   if (!k_initSystemCalls(SEGMENT_INDEX(KERNEL_CODE_SEGMENT, 0, PRIVILEGE_LEVEL_KERNEL),
+      osTSS.esp0, (unsigned int)SysCall))
+   {
+      k_printf("Can't initialize SYSENTER/SYSEXIT\n");
+      HALT();
+   }
+
+   /* create root task - takes over responsibility from the kernel for all resources
+      until a driver wants some of those responsibilities */
+   k_initTask(SEGMENT_INDEX(KERNEL_CODE_SEGMENT, 0, PRIVILEGE_LEVEL_KERNEL),
+      SEGMENT_INDEX(KERNEL_DATA_SEGMENT, 0, PRIVILEGE_LEVEL_KERNEL),
+      SEGMENT_INDEX(KERNEL_DATA_SEGMENT, 0, PRIVILEGE_LEVEL_KERNEL));
+   k_printf("Creating root task\n");
+   rootTask = k_createTask((unsigned int)root_task_main);
+   k_printf("copying mem\n");
+   k_memcpy(&userTSS, &rootTask->segment, sizeof(tss_t));
+
+   /* create boot task - loads the basic drivers; enough to boot the rest of the system */
 
    /* now start user space, effectively running the first task (root task) */
+   k_printf("switching to root task\n");
    unsigned int task_sel[2];
    task_sel[0] = 0;
    task_sel[1] = SEGMENT_INDEX(USER_TSS_SEGMENT, 0, PRIVILEGE_LEVEL_USER);
