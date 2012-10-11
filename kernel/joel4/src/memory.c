@@ -68,11 +68,10 @@
 #define PAGE_DIRECTORY_MAX_ENTRIES  1024
 #define PAGE_TABLE_MAX_ENTRIES      1024
 
-#define TOTAL_KERNEL_MEMORY         0x400000 /* 4MB should be enough for anybody */
+static unsigned char kernelFreePageMap[(KERNEL_MEMORY_LIMIT/PAGE_SIZE)/sizeof(char)];
+static unsigned int freePageStore;
+static unsigned int nextFreePage;
 
-static unsigned char bitmap[(TOTAL_KERNEL_MEMORY/PAGE_SIZE)/sizeof(char)];  // replace this with the define MEMORY_MAP_PHYS
-static PageTable kernelPageTable0 __attribute__((aligned(4096)));
-static unsigned int nextFreePage = (unsigned int)&kernelPageTable0;
 ////////////////////////////////////////////////////////////////////////////////
 /// @date   03/09/2008
 /// @short  Map the logical address to the physical address - only in real mode
@@ -144,7 +143,7 @@ __inline unsigned int readCR4(void)
    return rv;
 }
 
-int IsPhysPageFree(unsigned int address)
+int k_isPageFree(unsigned int address)
 {
    // which page is this address in?
    unsigned int page = address >> 12; // 4096 bytes in a page
@@ -156,7 +155,7 @@ int IsPhysPageFree(unsigned int address)
    unsigned int mask = 1 << (page & 0x07);
 
    //k_printf("page: 0x%x index: 0x%x mask: 0x%x\n", page, index, mask);
-   return !(mask & bitmap[index]);
+   return !(mask & kernelFreePageMap[index]);
 }
 
 void k_markPhysPageUsed(unsigned int address)
@@ -172,27 +171,27 @@ void k_markPhysPageUsed(unsigned int address)
    // which bit in the byte?
    unsigned int mask = 1 << (page & 0x07);
 
-   bitmap[index] |= mask;
+   kernelFreePageMap[index] |= mask;
    //k_printf("page: 0x%x index: 0x%x mask: 0x%x\n", page, index, mask);
    //k_hexout((const char*)pBitmap, 0x40);
 }
 
 
-unsigned int k_findFreePhysicalPage(void)
+unsigned int k_allocKernelPage(void)
 {
    unsigned int freePage = nextFreePage;
    unsigned int startPage = nextFreePage;
    do
    {
       nextFreePage += PAGE_SIZE;
-      if (nextFreePage > TOTAL_KERNEL_MEMORY)
+      if (nextFreePage > KERNEL_MEMORY_LIMIT)
          nextFreePage = 0;
       if (nextFreePage == startPage)
       {
          k_printf("Out of physical memory!!\n");
          while(1);   // this should run the page swapper
       }
-   }while (!IsPhysPageFree(nextFreePage));
+   }while (!k_isPageFree(nextFreePage));
    //k_printf("using free page: 0x%x\n", freePage);
    return freePage;
 }
@@ -213,7 +212,7 @@ PageTable* k_realCreatePageTable(PageDirectory* pDir, unsigned int index, int gl
    }
 
    // find a free page for the new page table
-   pPageTable = (PageTable*)k_findFreePhysicalPage();
+   pPageTable = (PageTable*)k_allocKernelPage();
    k_markPhysPageUsed((unsigned int)pPageTable);
 
    // initialize it
@@ -309,13 +308,18 @@ static void KernelUnmapAddr(unsigned int logical)
 }
 */
 
-int k_initMemory(PageDirectory* pageDir, PagingMethod method)
+int k_initMemory(unsigned int* pageDir, unsigned int limit, PagingMethod method, unsigned int pageStore)
 {
    unsigned int i;
 
    if (method == PAGING_2M_PAE)
    {
       k_printf("2MB PAE not implemented\n");
+      return 1;
+   }
+   else if (method == PAGING_4K_NORMAL)
+   {
+      k_printf("Get a real computer\n");
       return 1;
    }
    else if (method == PAGING_4M_PSE)
@@ -325,36 +329,31 @@ int k_initMemory(PageDirectory* pageDir, PagingMethod method)
       writeCR4((readCR4() | CR4_PSE));
    }
 
+   /* initialize the free kernel page store */
+   freePageStore = pageStore;
+   nextFreePage = freePageStore;
+   for (i=0; i < sizeof(kernelFreePageMap); i++)
+      kernelFreePageMap[i] = 0;
+
    // initialize the page directory with empty tables
-   k_printf("initializing\n");
    for (i=0; i < PAGE_DIRECTORY_MAX_ENTRIES; i++)
-      *pageDir[i] = MEMORY_PAGE_TABLE_GLOBAL | MEMORY_PAGE_TABLE_WRITE;
+      pageDir[i] = MEMORY_PAGE_TABLE_GLOBAL | MEMORY_PAGE_TABLE_WRITE;
 
-   /* map the first 4 MB into kernel space */
-   if (method == PAGING_4M_PSE)
+   /* map the first pages into kernel space */
+   for (i=0; i < limit; i+= PAGE_SIZE_4M)
    {
-      *pageDir[0] |= MEMORY_DIR_ENTRY_PRESENT | MEMORY_DIR_ENTRY_SIZE;
+      pageDir[i] |= MEMORY_DIR_ENTRY_PRESENT | MEMORY_DIR_ENTRY_SIZE;
+      k_printf("mapped 0x%x\n", i);
    }
-   else
-   {
-      PageTable* pTable = k_realCreatePageTable(pageDir, 0, 1);
-	   k_printf("page dir: 0x%x\n", pageDir);
-	   k_printf("page table 0: 0x%x\n", pTable);
-      for (i=0; i < TOTAL_KERNEL_MEMORY; i += PAGE_SIZE)
-         k_realMapAddr(pageDir, i, i);
-   }
-
   
    // set the page directory to CR3
-   k_setPageDirectory(pageDir);
+   k_setPageDirectory((PageDirectory*)pageDir);
 
    // turn on paging
-   k_printf("turning paging on 0x%x\n", pageDir);
    writeCR0(readCR0() | CR0_PG);
    k_printf("paging on\n");
 
    /* now turn on PGE - must be done after paging is on */
-
 }
 
 void _fh_page_fault(regs_t* pRegs)
