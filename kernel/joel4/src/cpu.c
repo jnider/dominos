@@ -35,6 +35,21 @@
 #define INTEL_FEATURES_TM     (1<<29)
 #define INTEL_FEATURES_PBE    (1<<31)
 
+/* Machine-specific Registers (MSR) - intel vol 2B table 4-7 */
+#define IA32_SYSENTER_CS   0x174
+#define IA32_SYSENTER_ESP  0x175
+#define IA32_SYSENTER_EIP  0x176
+
+static inline rdmsr(unsigned int address, unsigned int* low, unsigned int* high)
+{
+   asm volatile("rdmsr" : "=a"(*low), "=d"(*high) : "c"(address));
+}
+
+static inline wrmsr(unsigned int address, unsigned int low, unsigned int high)
+{
+   asm volatile("wrmsr" :: "a"(low), "d"(high), "c"(address));
+}
+
 void k_identifyCPU(cpu_info* info)
 {
    unsigned int ext=0;
@@ -115,3 +130,17 @@ void k_identifyCPU(cpu_info* info)
       info->pbe = features & INTEL_FEATURES_PBE;
    }
 }
+
+int k_initSystemCalls(unsigned int cs, unsigned int sp, unsigned int handler)
+{
+   //if (info->msr && info->sep)
+   {
+      wrmsr(cs, 0, IA32_SYSENTER_CS);
+      wrmsr(sp, 0, IA32_SYSENTER_ESP);
+      wrmsr(handler, 0, IA32_SYSENTER_EIP);
+      return 1;
+   }
+
+   return 0;
+}
+

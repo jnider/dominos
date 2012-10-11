@@ -11,20 +11,21 @@ typedef enum cpu_family
    INTEL_CORE_DUO,
 } cpu_family;
 
+/* intel manual 2A: table 3-23 */
 typedef struct cpu_info
 {
    cpu_family family;
-   char fpu;
-   char vme;
-   char de;
-   char pse;
-   char tsc;
-   char msr;
-   char pae;
-   char mce;
-   char cx8;
+   char fpu;      ///< floating point unit on chip
+   char vme;      ///< virtual 8086 extensions
+   char de;       ///< debugging extensions
+   char pse;      ///< page size extension
+   char tsc;      ///< time stamp counter
+   char msr;      ///< model-specific registers
+   char pae;      ///< physical address extension
+   char mce;      ///< machine check exception
+   char cx8;      ///< CMPXCHG8B instruction
    char apic;
-   char sep;
+   char sep;      ///< SYSENTER and SYSEXIT support
    char mtrr;
    char pge;
    char mca;
@@ -45,6 +46,14 @@ typedef struct cpu_info
 } cpu_info;
 
 void k_identifyCPU(cpu_info* info);
+
+int k_initSystemCalls(unsigned int cs, unsigned int sp, unsigned int handler);
+
+static inline rdtsc(unsigned long long* tsc)
+{
+   asm volatile("rdtsc" : "=A"(*tsc));
+}
+
 
 #endif /* _CPU__H */
 
