@@ -18,7 +18,8 @@
 #define USER_CODE_SEGMENT   3             /* user code segment index */
 #define USER_DATA_SEGMENT   4             /* user data segment index */
 #define KERNEL_TSS_SEGMENT  5             /* kernel task state segment index */
-#define USER_TSS_SEGMENT    6             /* user task state segment index */
+#define BAD_TSS_TSS_SEGMENT 6             /* bad tss task state segment index */
+#define USER_TSS_SEGMENT    7             /* user task state segment index */
 
 #define KERNEL_CODE_BASE    0             /* kernel code segment base address */
 #define KERNEL_CODE_LIMIT   0xFFFFFFFF    /* kernel code segment limit */
@@ -31,12 +32,21 @@
 
 static unsigned int kernelPageDir[PAGE_SIZE/sizeof(unsigned int)] __attribute__((aligned(4096)));
 static tss_t osTSS __attribute__((aligned(128)));
+static tss_t badtssTSS __attribute__((aligned(128)));
 static tss_t userTSS __attribute__((aligned(128)));
 static cpu_info cpuInfo;
 int kernel_data_segment = KERNEL_DATA_SEGMENT;
 extern int _endKernel; /* provided by the linker script to mark the end of the loadable portions of the kernel */
 
 extern void root_task_main(void);
+extern int _root_task_code_start;
+extern int _root_task_code_end;
+extern int _root_task_data_start;
+extern int _root_task_data_end;
+extern int _root_task_stack_start;
+extern int _root_task_stack_end;
+extern int _interruptStack;
+
 
 static void print_multiboot(const multiboot_info_t *pInfo)
 {
@@ -127,7 +137,7 @@ static void SysCall(void)
 void _main(unsigned long magic, multiboot_info_t *pInfo)
 {
    int freeHeap;
-   unsigned int freePages;
+   void* freePages;
    task_t* rootTask;
 
    k_cls();   // Clear the screen
@@ -177,6 +187,9 @@ void _main(unsigned long magic, multiboot_info_t *pInfo)
    GDT_SetTSS(    KERNEL_TSS_SEGMENT,
                   &osTSS,
                   PRIVILEGE_LEVEL_KERNEL);
+   GDT_SetTSS(    BAD_TSS_TSS_SEGMENT,
+                  &badtssTSS,
+                  PRIVILEGE_LEVEL_KERNEL);
    GDT_SetTSS(    USER_TSS_SEGMENT,
                   &userTSS,
                   PRIVILEGE_LEVEL_USER);
@@ -188,14 +201,21 @@ void _main(unsigned long magic, multiboot_info_t *pInfo)
    GDT_Load(SEGMENT_INDEX(KERNEL_CODE_SEGMENT, 0, PRIVILEGE_LEVEL_KERNEL),
             SEGMENT_INDEX(KERNEL_DATA_SEGMENT, 0, PRIVILEGE_LEVEL_KERNEL));
 
+   /* set up the bad TSS task in case something goes wrong during a task switch */
+   badtssTSS.cs = SEGMENT_INDEX(KERNEL_CODE_SEGMENT, 0, PRIVILEGE_LEVEL_KERNEL);
+   badtssTSS.ds = SEGMENT_INDEX(KERNEL_DATA_SEGMENT, 0, PRIVILEGE_LEVEL_KERNEL);
+   badtssTSS.ss = SEGMENT_INDEX(KERNEL_DATA_SEGMENT, 0, PRIVILEGE_LEVEL_KERNEL);
+   badtssTSS.eip = (unsigned int)&_interruptStack;
+   idt_set_gate(10, 0, &badtssTSS, PRIVILEGE_LEVEL_KERNEL);
+
    // load the task segment for the kernel task
    k_printf("Loading TSS\n");
    unsigned int ostss_index = SEGMENT_INDEX(KERNEL_TSS_SEGMENT, 0, PRIVILEGE_LEVEL_KERNEL);
    LOAD_TASK_REGISTER(ostss_index);
 
    /* calculate free space, and set up heap */
-   freePages = KERNEL_MEMORY_LIMIT - FREE_PAGE_COUNT * PAGE_SIZE;
-   freeHeap = freePages - (unsigned int)&_endKernel;
+   freePages = (void*)KERNEL_MEMORY_LIMIT - FREE_PAGE_COUNT * PAGE_SIZE;
+   freeHeap = freePages - (void*)&_endKernel;
    k_initHeap((int)&_endKernel, freeHeap);
    k_printf("Freemem: %i\n", k_freeMem());
 
@@ -204,7 +224,7 @@ void _main(unsigned long magic, multiboot_info_t *pInfo)
    if (cpuInfo.pse)
    {
       k_printf("PSE supported\n");
-      k_initMemory(kernelPageDir, KERNEL_MEMORY_LIMIT, PAGING_4M_PSE, freePages);
+      k_initMemory(freePages);
    }
    else
    {
@@ -219,20 +239,29 @@ void _main(unsigned long magic, multiboot_info_t *pInfo)
       HALT();
    }
 
+   /* initialize task management */
+   k_initTask(SEGMENT_INDEX(USER_CODE_SEGMENT, 0, PRIVILEGE_LEVEL_USER),
+      SEGMENT_INDEX(USER_DATA_SEGMENT, 0, PRIVILEGE_LEVEL_USER),
+      SEGMENT_INDEX(KERNEL_DATA_SEGMENT, 0, PRIVILEGE_LEVEL_KERNEL),
+      (unsigned int)&_interruptStack);
+
    /* create root task - takes over responsibility from the kernel for all resources
       until a driver wants some of those responsibilities */
-   k_initTask(SEGMENT_INDEX(KERNEL_CODE_SEGMENT, 0, PRIVILEGE_LEVEL_KERNEL),
-      SEGMENT_INDEX(KERNEL_DATA_SEGMENT, 0, PRIVILEGE_LEVEL_KERNEL),
-      SEGMENT_INDEX(KERNEL_DATA_SEGMENT, 0, PRIVILEGE_LEVEL_KERNEL));
    k_printf("Creating root task\n");
-   rootTask = k_createTask((unsigned int)root_task_main);
-   k_printf("copying mem\n");
-   k_memcpy(&userTSS, &rootTask->segment, sizeof(tss_t));
+   unsigned int stackSize = (void*)&_root_task_stack_end - (void*)&_root_task_stack_start;
+   rootTask = k_createTask(&_root_task_code_start,
+                           (void*)&_root_task_code_end - (void*)&_root_task_code_start,
+                           &_root_task_data_start,
+                           (void*)&_root_task_data_end - (void*)&_root_task_data_start,
+                           (void*)&_root_task_stack_start,
+                           stackSize,
+                           (unsigned int)root_task_main);
 
    /* create boot task - loads the basic drivers; enough to boot the rest of the system */
 
    /* now start user space, effectively running the first task (root task) */
    k_printf("switching to root task\n");
+   k_memcpy(&userTSS, &rootTask->segment, sizeof(tss_t));
    unsigned int task_sel[2];
    task_sel[0] = 0;
    task_sel[1] = SEGMENT_INDEX(USER_TSS_SEGMENT, 0, PRIVILEGE_LEVEL_USER);

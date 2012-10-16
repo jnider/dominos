@@ -16,7 +16,7 @@ SECTIONS {
 
    .text_boot : ALIGN(0x1000)
    {
-      objs/boot.o (.text .text.* .gnu.linkonce.t.*)
+      objs/boot.o (.text)
    } : btext
   
    . = ALIGN(0x10);
@@ -28,31 +28,57 @@ SECTIONS {
 
    .text ALIGN (0x1000) :
    {
-      *(.text)
+      *(EXCLUDE_FILE(objs/root_task.o) .text)
    }
 
    .rodata ALIGN (0x1000) :
    {
-      *(.rodata)
+      *(EXCLUDE_FILE(objs/root_task.o) .rodata)
    }
 
    .data ALIGN (0x1000) :
    {
-      *(.data)
+      *(EXCLUDE_FILE(objs/root_task.o) .data)
    }
 
    .bss :
    {
       *(COMMON)
-      *(.bss)
+      *(EXCLUDE_FILE(objs/root_task.o) .bss)
    }
 
    /* leave 4K for the kernel stack - counts down*/
-   . = ALIGN(0x1000);
+   .stacks ALIGN(0x1000):
+   {
    _kernelStackStart = .;
    . += 0x1000;
    _kernelStack = .;
-
+   . += 0x1000;
+   _interruptStack = .;
+   }
    _endKernel = .;
+
+   /* set the KERNEL_MEMORY_LIMIT */
+
+   /* ROOT TASK */
+   .root_task_code 0x800000: AT(LOADADDR(.stacks) + SIZEOF(.stacks))
+   {
+      _root_task_code_start = .;
+      objs/root_task.o (.text)
+      _root_task_code_end = .;
+   }
+
+   .root_task_data ALIGN(0x1000):
+   {
+      _root_task_data_start = .;
+      objs/root_task.o (.rodata .data .bss)
+      _root_task_data_end = .;
+      . = ALIGN(0x1000);
+      _root_task_stack_start = .;
+      . += 0x1000;
+      _root_task_stack_end = .;
+   }
+
+   _globalFreeSpace = .;
 }
 

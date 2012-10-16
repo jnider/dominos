@@ -42,7 +42,7 @@ static unsigned int createTaskID(void)
    return nextTaskID++;
 }
 
-void k_initTask(unsigned short codeSeg, unsigned short dataSeg, unsigned short stackSegInt)
+void k_initTask(unsigned short codeSeg, unsigned short dataSeg, unsigned short stackSegInt, unsigned int intStack)
 {
    /* initialize the lists */
    k_taskListInit(&allTaskList);
@@ -58,31 +58,65 @@ void k_initTask(unsigned short codeSeg, unsigned short dataSeg, unsigned short s
    defaultTaskParams.segment.esp = 0;
    defaultTaskParams.segment.eflags =  EFLAGS_IF |                  // make sure interrupts are enabled!
                                     EFLAGS_IOPL(PRIVILEGE_LEVEL_USER);  // and no access to IO ports    
-   defaultTaskParams.segment.ss0 = 0;
-   defaultTaskParams.segment.esp0 = 0;
+   defaultTaskParams.segment.ss0 = stackSegInt;
+   defaultTaskParams.segment.esp0 = intStack;
    //defaultTaskParams.segment.io_map = ; // 13.5.2
 
    //ISR_RegisterISRHandler(48, k_cooperate);	// allow for cooperative multitasking (giving up timeslices)
 }
 
-task_t* k_createTask(unsigned int entryPoint)
+task_t* k_createTask(unsigned int* code, unsigned int codeSize, unsigned int* data, unsigned int dataSize, unsigned int* stack, unsigned int stackSize, unsigned int entryPoint)
 {
+   int i;
+
    // allocate the structure for the context
    task_t* pTask = (task_t*)kmalloc(sizeof(task_t));
 
    k_memcpy(pTask, &defaultTaskParams, sizeof(task_t));
    pTask->taskID = createTaskID();
    k_printf("Task ID: 0x%x\n", pTask->taskID);
+   k_printf("Code: 0x%x (0x%x)\n", code, codeSize);
+   k_printf("Data: 0x%x (0x%x)\n", data, dataSize);
+   k_printf("Stack: 0x%x (0x%x)\n", stack, stackSize);
+   k_printf("Entry point: 0x%x\n", entryPoint);
 
    // choose entry point
    pTask->segment.eip = entryPoint;
-   k_printf("task 0x%x eip: 0x%x\n", pTask->taskID, pTask->segment.eip);
+   pTask->segment.esp = (unsigned int)stack + stackSize;
 
    // set up page directory
-   pTask->segment.pdbr = (unsigned int)k_allocKernelPage();
+   pTask->segment.pdbr = (unsigned int)k_allocPageDirectory();
    k_printf("PDBR: 0x%x\n", pTask->segment.pdbr);
 
+   // map the kernel
+   for (i=0; i < KERNEL_MEMORY_LIMIT; i+=PAGE_SIZE_4M)
+      k_map4MPage((unsigned int*)pTask->segment.pdbr, i, i, MEMORY_DIR_ENTRY_USER_MODE);
+
+   // map the table - for now, take it from the kernel
+   k_printf("Task: map table\n");
+   unsigned int* pTable = k_allocKernelPage();
+   k_mapTable((unsigned int*)pTask->segment.pdbr, (unsigned int)code, pTable);
+
+   // map the code
+   k_printf("Task: map code\n");
+   for (i=0; i < codeSize; i+= PAGE_SIZE)
+      k_map4KPage((unsigned int*)pTask->segment.pdbr, (unsigned int)code, (unsigned int)code,
+         MEMORY_PAGE_USER_MODE);
+
+   // map the data
+   k_printf("Task: map data\n");
+   for (i=0; i < dataSize; i+= PAGE_SIZE)
+      k_map4KPage((unsigned int*)pTask->segment.pdbr, (unsigned int)data, (unsigned int)data,
+         MEMORY_PAGE_WRITE | MEMORY_PAGE_USER_MODE);
+
+   // map the stack
+   k_printf("Task: map stack\n");
+   for (i=0; i < stackSize; i+= PAGE_SIZE)
+      k_map4KPage((unsigned int*)pTask->segment.pdbr, (unsigned int)stack, (unsigned int)stack,
+         MEMORY_PAGE_WRITE | MEMORY_PAGE_USER_MODE);
+
    // add it to the all task list
+   k_printf("task: add to list\n");
    k_taskListAdd(&allTaskList, pTask);
 
    return pTask;
