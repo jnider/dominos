@@ -33,13 +33,12 @@
 #define PAGE_DIRECTORY_MAX_ENTRIES  1024
 #define PAGE_TABLE_MAX_ENTRIES      1024
 
-extern int _globalFreeSpace;
 static void k_unmap4KPage(unsigned int* pPageDir, unsigned int logical);
 static unsigned char kernelFreePageMap[(KERNEL_MEMORY_LIMIT/PAGE_SIZE)/sizeof(char)];
 static void* freePageStore;
 static void* nextFreePage;
 static void* kernelPageDir;
-static void* globalFreeSpace = &_globalFreeSpace;
+static void* globalFreeSpace = (void*)KERNEL_MEMORY_LIMIT;
 void _fh_page_fault(regs_t* pRegs);
 
 ////////////////////////////////////////////////////////////////////////////////

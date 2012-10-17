@@ -200,7 +200,7 @@ extern task_t osTask;
 ////////////////////////////////////////////////////////////////////////////////
 void k_initTask(unsigned short codeSeg, unsigned short dataSeg, unsigned short stackSegInt, unsigned int intstack);
 
-task_t* k_createTask(unsigned int* code, unsigned int codeSize, unsigned int* data, unsigned int dataSize, unsigned int* stack, unsigned int stackSize, unsigned int entryPoint);              ///< creates a new task
+task_t* k_createTask(unsigned int* code, unsigned int codeSize, unsigned int* data, unsigned int dataSize, unsigned int entryPoint);              ///< creates a new task
 void k_setTaskAsPending(task_t* pTask, taskState state);    ///< adds a task to the pending list
 void k_setTaskAsReady(task_t* pTask);                       ///< adds a task to the ready list
 task_t* k_getTaskByID(unsigned int taskID);                 ///< gets a task by its id

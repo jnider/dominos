@@ -46,6 +46,11 @@
 #define FREE_PAGE_COUNT       0x100       /* used for page directories and temporary page tables */
 #define KERNEL_MEMORY_LIMIT   0x800000    /* how much memory is associated with the kernel */
 
+#define APP_CODE              0x1000000   /* logical address for code section for each app */
+#define APP_STACK             0x1100000   /* logical address for stack */
+#define APP_DATA              0x1200000   /* logical address for data section for each app */
+#define APP_STACK_SIZE        0x1000
+
 int k_initMemory(void* pageStore);
 void* k_allocKernelPage(void);
 void* k_allocPageDirectory(void);

@@ -40,11 +40,9 @@ extern int _endKernel; /* provided by the linker script to mark the end of the l
 
 extern void root_task_main(void);
 extern int _root_task_code_start;
-extern int _root_task_code_end;
+extern int _root_task_code_size;
 extern int _root_task_data_start;
-extern int _root_task_data_end;
-extern int _root_task_stack_start;
-extern int _root_task_stack_end;
+extern int _root_task_data_size;
 extern int _interruptStack;
 
 
@@ -129,7 +127,23 @@ static void print_multiboot(const multiboot_info_t *pInfo)
 
 static void SysCall(void)
 {
+   unsigned int c;
+
+   /* prolog */
+   asm volatile ( "pushl %edx    \n"
+                  "pushl %ecx    \n");
+
+   asm volatile("movl %%eax, %0": "=r" (c));
+
    k_printf("SysCall\n");
+   k_printf("%c", c);
+
+   /* epilog */
+   asm volatile ( "popl %%ecx    \n" /* Contains the usermode stack pointer (esp) */
+                  "popl %%edx    \n" /* Contains the instruction pointer (eip) */
+                  "sysexit    \n"
+                  :: );
+
 }
 
 #define _KOS_BUILD 2002
@@ -233,7 +247,7 @@ void _main(unsigned long magic, multiboot_info_t *pInfo)
    }
 
    if (!k_initSystemCalls(SEGMENT_INDEX(KERNEL_CODE_SEGMENT, 0, PRIVILEGE_LEVEL_KERNEL),
-      osTSS.esp0, (unsigned int)SysCall))
+      (unsigned int)k_allocKernelPage(), (unsigned int)SysCall))
    {
       k_printf("Can't initialize SYSENTER/SYSEXIT\n");
       HALT();
@@ -248,13 +262,10 @@ void _main(unsigned long magic, multiboot_info_t *pInfo)
    /* create root task - takes over responsibility from the kernel for all resources
       until a driver wants some of those responsibilities */
    k_printf("Creating root task\n");
-   unsigned int stackSize = (void*)&_root_task_stack_end - (void*)&_root_task_stack_start;
    rootTask = k_createTask(&_root_task_code_start,
-                           (void*)&_root_task_code_end - (void*)&_root_task_code_start,
-                           &_root_task_data_start,
-                           (void*)&_root_task_data_end - (void*)&_root_task_data_start,
-                           (void*)&_root_task_stack_start,
-                           stackSize,
+                           (unsigned int)&_root_task_code_size,
+                           (void*)&_root_task_data_start,
+                           (unsigned int)&_root_task_data_size,
                            (unsigned int)root_task_main);
 
    /* create boot task - loads the basic drivers; enough to boot the rest of the system */

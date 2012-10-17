@@ -3,7 +3,6 @@
 /* This is the root task.  It executes in user space even though it is
    compiled as part of the kernel.  In fact, it is the first user space
    task created as part of the kernel initialization */
-unsigned int dummy;
 
 void root_task_main(void)
 {
@@ -12,7 +11,5 @@ void root_task_main(void)
 
    for (i=0; i<10; i++)
       L4_DebugPutChar(c++);
-
-   dummy = 5;
 }
 
