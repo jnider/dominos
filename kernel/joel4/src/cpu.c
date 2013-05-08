@@ -66,22 +66,28 @@ void k_identifyCPU(cpu_info* info)
    {
    case 1:
       info->family = INTEL_PENTIUM;
+      k_printf("CPU: Pentium\n");
       break;
    case 2:
       info->family = INTEL_PENTIUM_PRO; /* or Pentium II or celeron */
+      k_printf("CPU: Pentium Pro (or II or celeron)\n");
       break;
    case 3:
       info->family = INTEL_PENTIUM_III;
+      k_printf("CPU: Pentium III\n");
       break;
    case 5:
       info->family = INTEL_PENTIUM_4;  /* or Pentium D 8xx */
+      k_printf("CPU: Pentium 4 (or D 8xx)\n");
       //info->ht = 1; /* w/ hyperthreading */
       break;
    case 6:
       info->family = INTEL_PENTIUM_D;  /* */
+      k_printf("CPU: Pentium D 9xx\n");
       break;
    case 0xA:
       info->family = INTEL_CORE_DUO; /* or Duo 2 or Xeon 3000/5100/5300 */
+      k_printf("CPU: Pentium Core Duo (or Duo 2 or Xeon 3000/5100/5300)\n");
       break;
    }
 
@@ -135,9 +141,9 @@ int k_initSystemCalls(unsigned int cs, unsigned int sp, unsigned int handler)
 {
    //if (info->msr && info->sep)
    {
-      wrmsr(cs, 0, IA32_SYSENTER_CS);
-      wrmsr(sp, 0, IA32_SYSENTER_ESP);
-      wrmsr(handler, 0, IA32_SYSENTER_EIP);
+      wrmsr(IA32_SYSENTER_CS, cs, 0);
+      wrmsr(IA32_SYSENTER_ESP, sp, 0);
+      wrmsr(IA32_SYSENTER_EIP, handler, 0);
       return 1;
    }
 

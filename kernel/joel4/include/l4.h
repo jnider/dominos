@@ -94,7 +94,22 @@ inline int L4_CNode_SaveCaller(L4_CapDescriptor* cap);
 inline void L4_DebugHalt(void);
 static inline void L4_DebugPutChar(char c)
 {
-   asm volatile ("sysenter\n":::);
+    asm volatile (
+        "pushl %%ebp       \n"
+        "movl %%ecx, %%ebp \n"
+        "movl %%esp, %%ecx \n"
+        "leal 1f, %%edx    \n"
+        "1:                \n"
+        "sysenter          \n"
+        "popl %%ebp        \n"
+        :
+        : "a" (c),
+          "b" (1),
+          "S" (2),
+          "D" (3),
+          "c" (4)
+        : "%edx"
+    );
 }
 
 /* IRQ */

@@ -7,8 +7,13 @@ _boot_sys_start = 0x100000;
 ENTRY(_entry_point)
 
 PHDRS {
-  btext PT_LOAD;
-  bdata PT_LOAD;
+   boot_code PT_LOAD;
+   boot_data PT_LOAD;
+   main_code PT_LOAD;
+   main_data PT_LOAD;
+   k_stacks PT_LOAD;
+   root_code PT_LOAD;
+   root_data PT_LOAD;
 }
 
 SECTIONS {
@@ -16,43 +21,60 @@ SECTIONS {
 
    .text_boot : ALIGN(0x1000)
    {
-      objs/boot.o (.text .text.* .gnu.linkonce.t.*)
-   } : btext
+      objs/boot.o (.text)
+   } : boot_code
   
    . = ALIGN(0x10);
-   .bss_boot :
+   .data_boot :
    {
-      objs/boot.o (.bss)
+      objs/boot.o (.data .bss .rodata)
       . = ALIGN(0x1000);
-   } : bdata
+   } : boot_data
 
    .text ALIGN (0x1000) :
    {
-      *(.text)
-   }
+      *(EXCLUDE_FILE(objs/root_task.o) .text)
+   } : main_code
 
    .rodata ALIGN (0x1000) :
    {
-      *(.rodata)
-   }
-
-   .data ALIGN (0x1000) :
-   {
-      *(.data)
-   }
-
-   .bss :
-   {
+      *(EXCLUDE_FILE(objs/root_task.o) .rodata)
+      *(EXCLUDE_FILE(objs/root_task.o) .data)
+      *(EXCLUDE_FILE(objs/root_task.o) .bss)
       *(COMMON)
-      *(.bss)
-   }
+   } : main_data
 
    /* leave 4K for the kernel stack - counts down*/
-   . = ALIGN(0x1000);
+   .stacks ALIGN(0x1000):
+   {
    _kernelStackStart = .;
    . += 0x1000;
    _kernelStack = .;
+   . += 0x1000;
+   _interruptStack = .;
+   } : k_stacks
 
+   /* set the KERNEL_MEMORY_LIMIT */
+
+   /* ROOT TASK */
+   .root_task_code 0x1000000: AT(ADDR(.stacks) + SIZEOF(.stacks))
+   {
+      objs/root_task.o (.text)
+      . = ALIGN(0x1000);
+   } : root_code
+
+   .root_task_data 0x1100000 : AT(LOADADDR(.root_task_code) + SIZEOF(.root_task_code))
+   {
+      objs/root_task.o (.rodata .data .bss)
+      . += 0x1000;
+      . = ALIGN(0x1000);
+   } : root_data
+
+   . = LOADADDR(.root_task_data) + SIZEOF(.root_task_data);
+   _root_task_code_start = LOADADDR(.root_task_code);
+   _root_task_code_size = SIZEOF(.root_task_code);
+   _root_task_data_start = LOADADDR(.root_task_data);
+   _root_task_data_size = SIZEOF(.root_task_data);
    _endKernel = .;
 }
 

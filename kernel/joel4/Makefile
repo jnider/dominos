@@ -14,7 +14,8 @@ SRC_DIR=src
 OUTPUT_DIR=objs
 
 all: output_dir $(OBJS)
-	$(LD) $(OBJS) -T joel4.ld -o joel4.elf
+	$(LD) $(LDFLAGS) $(OBJS) -T joel4.ld -o joel4.elf
+	readelf -s joel4.elf | gawk -f sym.awk > joel4.sym
 
 output_dir:
 	if [ ! -d $(OUTPUT_DIR) ]; then mkdir -p $(OUTPUT_DIR); fi
