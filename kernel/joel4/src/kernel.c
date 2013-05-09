@@ -8,6 +8,7 @@
 #include "task.h"
 #include "memory.h"
 #include "cpu.h"
+#include "version.h"
 
 #define LOAD_TASK_REGISTER(_index)  __ASM("ltr %0\n" :: "am"(_index))
 
@@ -37,14 +38,15 @@ static tss_t userTSS __attribute__((aligned(128)));
 static cpu_info cpuInfo;
 int kernel_data_segment = KERNEL_DATA_SEGMENT;
 extern int _endKernel; /* provided by the linker script to mark the end of the loadable portions of the kernel */
+extern unsigned int _kernelStack;
 
 extern void root_task_main(void);
+extern void syscall(void);
 extern int _root_task_code_start;
 extern int _root_task_code_size;
 extern int _root_task_data_start;
 extern int _root_task_data_size;
 extern int _interruptStack;
-
 
 static void print_multiboot(const multiboot_info_t *pInfo)
 {
@@ -125,29 +127,6 @@ static void print_multiboot(const multiboot_info_t *pInfo)
 
 }
 
-static void SysCall(void)
-{
-   unsigned int c;
-
-   /* prolog */
-   asm volatile ( "pushl %edx    \n"
-                  "pushl %ecx    \n");
-
-   asm volatile("movl %%eax, %0": "=r" (c));
-
-   k_printf("SysCall\n");
-   k_printf("%c", c);
-
-   /* epilog */
-   asm volatile ( "popl %%ecx    \n" /* Contains the usermode stack pointer (esp) */
-                  "popl %%edx    \n" /* Contains the instruction pointer (eip) */
-                  "sysexit    \n"
-                  :: );
-
-}
-
-#define _KOS_BUILD 2002
-
 void _main(unsigned long magic, multiboot_info_t *pInfo)
 {
    int freeHeap;
@@ -167,13 +146,20 @@ void _main(unsigned long magic, multiboot_info_t *pInfo)
       k_printf("Not a multiboot bootloader\n");
       while(1);
    }
-   //print_multiboot(pInfo);
+   print_multiboot(pInfo);
 
    /* find out who we are dealing with */
-   k_identifyCPU(&cpuInfo);
+   k_getCpuInfo(&cpuInfo);
+   k_printCpuInfo(&cpuInfo);
+   
+   if (k_strcmp(cpuInfo.intel.vendorStr, "GenuineIntel"))
+   {
+      k_printf("We don't support vendors other than Intel at this time\n");
+      return;
+   }
 
    /* set up the global descriptor table */
-   k_printf("Init GDT\n");
+   //k_printf("Init GDT\n");
    GDT_Init();
    /* first the memory protection segments */
    GDT_SetSegment(KERNEL_CODE_SEGMENT,
@@ -196,8 +182,9 @@ void _main(unsigned long magic, multiboot_info_t *pInfo)
                   USER_DATA_LIMIT,
                   DESCRIPTOR_DATA_RW,
                   PRIVILEGE_LEVEL_USER);
+   
    /* and now the task state segments */
-   k_printf("Setting TSS\n");
+   //k_printf("Setting TSS\n");
    GDT_SetTSS(    KERNEL_TSS_SEGMENT,
                   &osTSS,
                   PRIVILEGE_LEVEL_KERNEL);
@@ -209,9 +196,9 @@ void _main(unsigned long magic, multiboot_info_t *pInfo)
                   PRIVILEGE_LEVEL_USER);
 
    ISR_Init();
-   k_printf("Loading IDT\n");
+   //k_printf("Loading IDT\n");
    IDT_Init(SEGMENT_INDEX(KERNEL_CODE_SEGMENT, 0, PRIVILEGE_LEVEL_KERNEL));
-   k_printf("Loading GDT\n");
+   //k_printf("Loading GDT\n");
    GDT_Load(SEGMENT_INDEX(KERNEL_CODE_SEGMENT, 0, PRIVILEGE_LEVEL_KERNEL),
             SEGMENT_INDEX(KERNEL_DATA_SEGMENT, 0, PRIVILEGE_LEVEL_KERNEL));
 
@@ -235,9 +222,11 @@ void _main(unsigned long magic, multiboot_info_t *pInfo)
 
    /* initialize memory, and enable paging */
    k_printf("Initializing memory\n");
-   if (cpuInfo.pse)
+   
+   // check for page size extensions (4MB pages)
+   if (cpuInfo.intel.features & INTEL_FEATURES_PSE)
    {
-      k_printf("PSE supported\n");
+      k_printf("4MB memory pages supported\n");
       k_initMemory(freePages);
    }
    else
@@ -246,8 +235,12 @@ void _main(unsigned long magic, multiboot_info_t *pInfo)
       HALT();
    }
 
-   if (!k_initSystemCalls(SEGMENT_INDEX(KERNEL_CODE_SEGMENT, 0, PRIVILEGE_LEVEL_KERNEL),
-      (unsigned int)k_allocKernelPage(), (unsigned int)SysCall))
+   if ((cpuInfo.intel.features & INTEL_FEATURES_MSR) && 
+      (cpuInfo.intel.features & INTEL_FEATURES_SEP))
+   {
+      k_initSystemCalls(SEGMENT_INDEX(KERNEL_CODE_SEGMENT, 0, PRIVILEGE_LEVEL_KERNEL), (unsigned int)&_kernelStack, (unsigned int)syscall);
+   }
+   else
    {
       k_printf("Can't initialize SYSENTER/SYSEXIT\n");
       HALT();
@@ -268,7 +261,15 @@ void _main(unsigned long magic, multiboot_info_t *pInfo)
                            (unsigned int)&_root_task_data_size,
                            (unsigned int)root_task_main);
 
-   /* create boot task - loads the basic drivers; enough to boot the rest of the system */
+   /* save some information for the boot task on it's stack */
+   uint32* smash = (uint32*)0x704ffc;
+   *smash = 0x22222222;
+   smash--;
+   *smash = 0x33333333;
+
+   //pInfo->mem_upper
+
+   _ENABLE_INTERRUPTS();
 
    /* now start user space, effectively running the first task (root task) */
    k_printf("switching to root task\n");

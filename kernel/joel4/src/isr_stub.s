@@ -2,6 +2,7 @@
 
 .extern interrupt_handler_table
 .extern kernel_data_segment
+.extern syscall_handler_table
 
 .global isr0
 .global isr1
@@ -40,6 +41,7 @@
 .global irq15
 .global irqCooperate
 .global irqV8086
+.global syscall
 
 isr0:
    cli
@@ -309,3 +311,21 @@ isr_common_stub:
 
    addl $8, %esp # gets rid of the error code and interrupt number
    iret
+
+syscall:
+   pushl %edx  # save the user mode instruction pointer
+   pushl %ecx  # save the user mode stack pointer
+   
+   # save ebx on the stack - this becomes the variable "param1"
+   pushl %ebx
+   
+   mov $syscall_handler_table, %esi # move the address of the table into ESI
+   movl (%esi, %eax, 4), %ebx       # calculate the offset of the function pointer
+   call *%ebx                       # call it
+   
+   addl $4, %esp
+   
+   popl %ecx # restore the user mode stack pointer
+   popl %edx # restore the user mode instruction pointer
+   sysexit
+   
