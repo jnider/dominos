@@ -2,6 +2,7 @@
 #define _L4__H
 
 typedef unsigned char uint8;
+typedef unsigned short uint16;
 typedef unsigned int uint32;
 typedef enum bool { FALSE, TRUE } bool;
 
@@ -15,6 +16,11 @@ typedef uint32 L4_PageDirectory;
 
 typedef void* L4_Memory;
 typedef void* L4_CapData;
+
+typedef enum L4_syscall
+{
+   SYSCALL_DEBUG_PUT_CHAR
+} L4_syscall;
 
 /**
  * @brief Capability Access Rights
@@ -34,6 +40,18 @@ typedef L4_CPtr L4_IRQHandler;
 typedef L4_CPtr L4_Untyped;
 
 #ifdef ARCH_IA32
+#define SYSCALL(_reason, _param1)   asm volatile (                                  \
+         "pushl %%ebp       \n"      /* save the base pointer for when we come back to user space */ \
+        "movl %%esp, %%ecx \n"      /* save the stack pointer in ECX */             \
+        "leal 1f, %%edx    \n"      /* save the instruction pointer in EDX */       \
+        "sysenter          \n"      /* make the call */                             \
+        "1:                \n"                                                      \
+        "popl %%ebp        \n"      /* restore the base pointer, and we're done */  \
+        :                                                                           \
+        : "a" (_reason),            /* EAX = syscall reason */                      \
+          "b" (_param1)             /* EBX = param 1 */                             \
+          : "%edx");
+
 typedef L4_CPtr L4_IA32_ASIDControl;
 typedef L4_CPtr L4_IA32_ASIDPool;
 typedef L4_CPtr L4_IA32_IOSpace;
@@ -94,22 +112,7 @@ inline int L4_CNode_SaveCaller(L4_CapDescriptor* cap);
 inline void L4_DebugHalt(void);
 static inline void L4_DebugPutChar(char c)
 {
-    asm volatile (
-        "pushl %%ebp       \n"
-        "movl %%ecx, %%ebp \n"
-        "movl %%esp, %%ecx \n"
-        "leal 1f, %%edx    \n"
-        "1:                \n"
-        "sysenter          \n"
-        "popl %%ebp        \n"
-        :
-        : "a" (c),
-          "b" (1),
-          "S" (2),
-          "D" (3),
-          "c" (4)
-        : "%edx"
-    );
+   SYSCALL(SYSCALL_DEBUG_PUT_CHAR, c);
 }
 
 /* IRQ */
