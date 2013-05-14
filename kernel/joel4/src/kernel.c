@@ -9,6 +9,8 @@
 #include "memory.h"
 #include "cpu.h"
 #include "version.h"
+#include "eflags.h"	// for turning off interrupts in root task - should be cpu specific
+#include "root_task.h"
 
 #define LOAD_TASK_REGISTER(_index)  __ASM("ltr %0\n" :: "am"(_index))
 
@@ -31,7 +33,7 @@
 #define USER_DATA_BASE      0             /* user data segment base address */
 #define USER_DATA_LIMIT     0xFFFFFFFF    /* user data segment limit */
 
-static unsigned int kernelPageDir[PAGE_SIZE/sizeof(unsigned int)] __attribute__((aligned(4096)));
+//static unsigned int kernelPageDir[PAGE_SIZE/sizeof(unsigned int)] __attribute__((aligned(4096)));
 static tss_t osTSS __attribute__((aligned(128)));
 static tss_t badtssTSS __attribute__((aligned(128)));
 static tss_t userTSS __attribute__((aligned(128)));
@@ -132,6 +134,9 @@ void _main(unsigned long magic, multiboot_info_t *pInfo)
    int freeHeap;
    void* freePages;
    task_t* rootTask;
+
+	// interrupts should be off by default, but make sure anyway
+   _DISABLE_INTERRUPTS();
 
    k_cls();   // Clear the screen
 
@@ -261,17 +266,48 @@ void _main(unsigned long magic, multiboot_info_t *pInfo)
                            (unsigned int)&_root_task_data_size,
                            (unsigned int)root_task_main);
 
-   /* save some information for the boot task on it's stack */
-   uint32* smash = (uint32*)0x704ffc;
-   *smash = 0x22222222;
-   smash--;
-   *smash = 0x33333333;
+	// turn off interrupts for root task only
+	rootTask->segment.eflags &= ~EFLAGS_IF;
+
+   // copy the init module into the root task
+   if ((pInfo->flags & MULTIBOOT_MODULES) && (pInfo->mods_count > 0))
+   {
+		uint32 i;
+      module_t *mod = (module_t*)pInfo->mods_addr;
+
+		// determine how many more pages need to be mapped
+		uint32 freeSpace = (unsigned int)&_root_task_data_size % PAGE_SIZE;
+		uint32 modSize = mod->mod_end - mod->mod_start;
+   	k_printf("free space: %i needed space %i\n", freeSpace, modSize);
+
+		// map the needed pages
+		uint32 numMappedPages = (uint32)&_root_task_data_size / PAGE_SIZE;
+		for (i=0; i < modSize; i+= PAGE_SIZE)
+		{
+			uint32 newpage = k_allocKernelPage();
+      	k_map4KPage((unsigned int*)rootTask->segment.pdbr, (unsigned int)newpage, (unsigned int)APP_DATA + (numMappedPages * PAGE_SIZE) + i,
+         	MEMORY_PAGE_WRITE | MEMORY_PAGE_USER_MODE);
+			
+			// now copy the data to the user-accessible space
+			k_printf("copying from: 0x%x to 0x%x size: %i\n", (void*)mod->mod_start, newpage, PAGE_SIZE);
+			k_memcpy(newpage, (void*)mod->mod_start, modSize);
+		}
+
+
+   	/* save some information for the boot task on it's stack (as a parameter) */
+		rootTask->segment.esp -= sizeof(BootInfo) + 4; //adjust the stack so as to leave room for the parameter
+   	BootInfo* pBootInfo = (BootInfo*)(0x706000 - sizeof(BootInfo)); //0x705ff0
+		k_printf("boot info @ 0x%x\n", pBootInfo);
+   	pBootInfo->initData = APP_DATA + (unsigned int)&_root_task_data_size; // set the pointer to the virtual address for the data part + the offset
+		pBootInfo->initDataSize = modSize;
+		pBootInfo->freeMem = pInfo->mem_upper;
+   }
+
 
    //pInfo->mem_upper
 
-   _ENABLE_INTERRUPTS();
-
-   /* now start user space, effectively running the first task (root task) */
+   // now start user space, effectively running the first task (root task) 
+	// interrupts are enabled inside user-space tasks automatically (tss)
    k_printf("switching to root task\n");
    k_memcpy(&userTSS, &rootTask->segment, sizeof(tss_t));
    unsigned int task_sel[2];

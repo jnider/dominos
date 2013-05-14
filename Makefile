@@ -5,4 +5,4 @@ all:
 	./makeiso.sh grub2
 
 init.cpio: initfiles.txt
-	cpio -o < initfiles.txt > init.cpio
+	cpio --format=newc -o < initfiles.txt > init.cpio
