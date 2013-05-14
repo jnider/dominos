@@ -38,9 +38,7 @@ SECTIONS {
 
    .rodata ALIGN (0x1000) :
    {
-      *(EXCLUDE_FILE(objs/root_task.o) .rodata)
-      *(EXCLUDE_FILE(objs/root_task.o) .data)
-      *(EXCLUDE_FILE(objs/root_task.o) .bss)
+      *(EXCLUDE_FILE(objs/root_task.o) .rodata .data .bss)
       *(COMMON)
    } : main_data
 
@@ -63,7 +61,10 @@ SECTIONS {
       . = ALIGN(0x1000);
    } : root_code
 
-   .root_task_data 0x1100000 : AT(LOADADDR(.root_task_code) + SIZEOF(.root_task_code))
+	/* stack is 0x1100000 */
+
+	/* data is 0x1200000 */
+   .root_task_data 0x1200000 : AT(LOADADDR(.root_task_code) + SIZEOF(.root_task_code))
    {
       objs/root_task.o (.rodata .data .bss)
       . += 0x1000;
