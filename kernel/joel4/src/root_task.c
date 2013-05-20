@@ -296,7 +296,10 @@ void root_task_main(BootInfo info)
 			
 			// get the program image from the archive
 			progBuffer = cpio_open_file(archive, progFilename, &progFilesize);
-			LoadProgram(progFilename, progBuffer, progFilesize);
+			if (!progBuffer)
+				printf("Can't find %s in archive\n", progFilename);
+			else
+				LoadProgram(progFilename, progBuffer, progFilesize);
 			break;
 
 		default:
