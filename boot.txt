@@ -1,5 +1,4 @@
-pcie.driver
-pcie.stack
-usb.driver
-usb.stack
-
+drivers/pcie.driver
+protocols/pcie.protocol
+drivers/usb.driver
+protocols/usb.protocol
