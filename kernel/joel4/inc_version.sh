@@ -11,7 +11,7 @@ if [ ! -e include/version.h ] ; then
 fi
 
 # find out the current version number
-ver=$(grep '_KOS_BUILD' include/version.h | gawk '{ print $3 }')
+ver=$(grep '_JOEL4_BUILD' include/version.h | gawk '{ print $3 }')
 
 echo "Current version: " $ver
 ver=$(($ver+1))
@@ -19,6 +19,6 @@ ver=$(($ver+1))
 # now write out a new copy of the file
 echo "#ifndef __VERSION_H" > include/version.h
 echo "#define __VERSION_H" >> include/version.h
-echo "#define _KOS_BUILD $ver" >> include/version.h
+echo "#define _JOEL4_BUILD $ver" >> include/version.h
 echo "#endif" >> include/version.h
 
