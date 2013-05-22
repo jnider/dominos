@@ -9,28 +9,51 @@ include rules.mk
 include files.mk
 
 INCLUDE_PATHS=-Iinclude
-CONFIG?=release
 SRC_DIR=src
 OUTPUT_DIR=objs
 OUTPUT_NAME=joel4
+DEBUG?=n
+OPTIONS?=n
 
-all: joel4.elf tags bochs debug
+# if the OPTIONS option is set, print out all the variables in use
+ifeq ($(OPTIONS),y)
+all: options
+endif
+
+# build the kernel and update tags
+all: joel4.elf tags
 	@echo "Build complete"
 
-%.elf: output_dir version $(OBJS)
-	$(LD) $(OBJS) -T $*.ld -o $@
+# if the DEBUG option is set, build additional debug files
+ifeq ($(DEBUG),y)
+all: debug
+endif
 
-bochs:
-	readelf -s $(OUTPUT_NAME).elf | gawk -f sym.awk > $(OUTPUT_NAME).sym
+# link the ELF - this should be moved to rules
+%.elf: output_dir version $(OBJS)
+	@echo "Linking $@"
+	@$(LD) $(OBJS) -T $*.ld -o $@
+
+# print all the variables
+options:
+	@echo "CC=$(CC)"
+	@echo "CFLAGS=$(CFLAGS)"
+	@echo "ASMFLAGS=$(ASMFLAGS)"
+	@echo "LDFLAGS=$(LDFLAGS)"
+	@echo "DEBUG=$(DEBUG)"
 
 debug:
-	objdump -dS $(OUTPUT_NAME).elf > $(OUTPUT_NAME).s
+	@echo "Dumping assembler to $(OUTPUT_NAME).s"
+	@objdump -dS $(OUTPUT_NAME).elf > $(OUTPUT_NAME).s
+	@echo "Creating BOCHS debug symbol file $(OUTPUT_NAME).sym"
+	@readelf -s $(OUTPUT_NAME).elf | $(AWK) -f sym.awk > $(OUTPUT_NAME).sym
 
 output_dir:
-	if [ ! -d $(OUTPUT_DIR) ]; then mkdir -p $(OUTPUT_DIR); fi
+	@if [ ! -d $(OUTPUT_DIR) ]; then echo "Creating output directory"; mkdir -p $(OUTPUT_DIR); fi
 
 version:
-	./inc_version.sh
+	@echo "Incrementing kernel version"
+	@./inc_version.sh
 
 init.cpio: initfiles.txt
 	cpio -o < initfiles.txt > init.cpio
