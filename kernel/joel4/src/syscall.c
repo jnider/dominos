@@ -1,20 +1,24 @@
 #include "l4.h"
+#include "task.h"
 
-typedef void(syscall_handler_t)(uint32 param1);
+typedef uint32(syscall_handler_t)(uint32 param1);
 
-void DebugPrintChar(uint32 param1)
+static inline uint32 DebugPrintChar(uint32 param1)
 {
    k_putchar((char)param1);
    serial_putc((char)param1);
+   return 0;
 }
 
-void sch2(uint32 param1)
+static inline uint32 syscall_create_task_wrapper(uint32 p1)
 {
-   k_printf("SysCall 2\n"); 
+   task_t* pTask = k_createTask();
+   return pTask->taskID;
 }
 
 syscall_handler_t* syscall_handler_table[] =
 {
    DebugPrintChar,
-   sch2
+   syscall_create_task_wrapper
 };
+

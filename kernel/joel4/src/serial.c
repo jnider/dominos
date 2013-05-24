@@ -16,23 +16,23 @@
 /* Set default values if none specified */
 
 #ifndef COMCONSOLE
-#define COMCONSOLE	0x3f8
+#define COMCONSOLE   0x3f8
 #endif
 
 #ifndef COMSPEED
-#define COMSPEED	115200
+#define COMSPEED  115200
 #endif
 
 #ifndef COMDATA
-#define COMDATA		8
+#define COMDATA      8
 #endif
 
 #ifndef COMPARITY
-#define COMPARITY	0
+#define COMPARITY 0
 #endif
 
 #ifndef COMSTOP
-#define COMSTOP		1
+#define COMSTOP      1
 #endif
 
 #undef UART_BASE
@@ -48,9 +48,9 @@
 #define COMBRD (115200/UART_BAUD)
 
 /* Line Control Settings */
-#define UART_LCS ( ( ( (COMDATA) - 5 )	<< 0 ) | \
-		   ( ( (COMPARITY) )	<< 3 ) | \
-		   ( ( (COMSTOP) - 1 )	<< 2 ) )
+#define UART_LCS ( ( ( (COMDATA) - 5 ) << 0 ) | \
+         ( ( (COMPARITY) ) << 3 ) | \
+         ( ( (COMSTOP) - 1 )  << 2 ) )
 
 /* Data */
 #define UART_RBR 0x00
@@ -67,13 +67,13 @@
 
 /* Status */
 #define UART_LSR 0x05
-#define  UART_LSR_TEMPT 0x40	/* Transmitter empty */
-#define  UART_LSR_THRE  0x20	/* Transmit-hold-register empty */
-#define  UART_LSR_BI	0x10	/* Break interrupt indicator */
-#define  UART_LSR_FE	0x08	/* Frame error indicator */
-#define  UART_LSR_PE	0x04	/* Parity error indicator */
-#define  UART_LSR_OE	0x02	/* Overrun error indicator */
-#define  UART_LSR_DR	0x01	/* Receiver data ready */
+#define  UART_LSR_TEMPT 0x40  /* Transmitter empty */
+#define  UART_LSR_THRE  0x20  /* Transmit-hold-register empty */
+#define  UART_LSR_BI 0x10  /* Break interrupt indicator */
+#define  UART_LSR_FE 0x08  /* Frame error indicator */
+#define  UART_LSR_PE 0x04  /* Parity error indicator */
+#define  UART_LSR_OE 0x02  /* Overrun error indicator */
+#define  UART_LSR_DR 0x01  /* Receiver data ready */
 
 #define UART_MSR 0x06
 #define UART_SCR 0x07
@@ -82,44 +82,45 @@
 #define uart_writeb(val,addr) outb((addr),(val))
 
 /*
- * void serial_putc(int ch);
- *	Write character `ch' to port UART_BASE.
+ * Write character `ch' to port UART_BASE
  */
 void serial_putc(int ch)
 {
-    int status;
-    for (;;) {
-	status = uart_readb(UART_BASE + UART_LSR);
-	if (status & UART_LSR_THRE) {
-	    /* TX buffer emtpy */
-	    uart_writeb(ch, UART_BASE + UART_TBR);
-	    break;
-	}
-    }
+   // Use this for converting \n to \r\n (as needed on Windows systems)
+   if (ch == '\n')
+      serial_putc('\r');
+
+   for (;;)
+   {
+      if (uart_readb(UART_BASE + UART_LSR) & UART_LSR_THRE)
+      {
+         uart_writeb(ch, UART_BASE + UART_TBR);
+         break;
+      }
+   }
 }
 
 /*
- * int serial_getc(void);
- *	Read a character from port UART_BASE.
+ * Read a character from port UART_BASE
  */
 int serial_getc(void)
 {
     int status;
     int ch;
     do {
-	status = uart_readb(UART_BASE + UART_LSR);
+   status = uart_readb(UART_BASE + UART_LSR);
     } while ((status & 1) == 0);
-    ch = uart_readb(UART_BASE + UART_RBR);	/* fetch (first) character */
-    ch &= 0x7f;			/* remove any parity bits we get */
-    if (ch == 0x7f) {		/* Make DEL... look like BS */
-	ch = 0x08;
+    ch = uart_readb(UART_BASE + UART_RBR);   /* fetch (first) character */
+    ch &= 0x7f;         /* remove any parity bits we get */
+    if (ch == 0x7f) {      /* Make DEL... look like BS */
+   ch = 0x08;
     }
     return ch;
 }
 
 /*
  * int serial_init(void);
- *	Initialize port UART_BASE to speed COMSPEED, line settings 8N1.
+ * Initialize port UART_BASE to speed COMSPEED, line settings 8N1.
  */
 int serial_init(void)
 {
@@ -133,8 +134,8 @@ int serial_init(void)
     lcs = uart_readb(UART_BASE + UART_LCR) & 0x7f;
     uart_writeb(0x80 | lcs, UART_BASE + UART_LCR);
     divisor =
-	(uart_readb(UART_BASE + UART_DLM) << 8) | uart_readb(UART_BASE +
-							     UART_DLL);
+   (uart_readb(UART_BASE + UART_DLM) << 8) | uart_readb(UART_BASE +
+                          UART_DLL);
     uart_writeb(lcs, UART_BASE + UART_LCR);
 #endif
 
@@ -144,27 +145,27 @@ int serial_init(void)
     uart_writeb(0x80 | lcs, UART_BASE + UART_LCR);
     uart_writeb(0xaa, UART_BASE + UART_DLL);
     if (uart_readb(UART_BASE + UART_DLL) != 0xaa) {
-	goto out;
+   goto out;
     }
     uart_writeb(0x55, UART_BASE + UART_DLL);
     if (uart_readb(UART_BASE + UART_DLL) != 0x55) {
-	goto out;
+   goto out;
     }
     uart_writeb(divisor & 0xff, UART_BASE + UART_DLL);
     if (uart_readb(UART_BASE + UART_DLL) != (divisor & 0xff)) {
-	goto out;
+   goto out;
     }
     uart_writeb(0xaa, UART_BASE + UART_DLM);
     if (uart_readb(UART_BASE + UART_DLM) != 0xaa) {
-	goto out;
+   goto out;
     }
     uart_writeb(0x55, UART_BASE + UART_DLM);
     if (uart_readb(UART_BASE + UART_DLM) != 0x55) {
-	goto out;
+   goto out;
     }
     uart_writeb((divisor >> 8) & 0xff, UART_BASE + UART_DLM);
     if (uart_readb(UART_BASE + UART_DLM) != ((divisor >> 8) & 0xff)) {
-	goto out;
+   goto out;
     }
     uart_writeb(lcs, UART_BASE + UART_LCR);
 
@@ -179,12 +180,12 @@ int serial_init(void)
 
     /* Flush the input buffer. */
     do {
-	/* rx buffer reg
-	 * throw away (unconditionally the first time)
-	 */
-	(void)uart_readb(UART_BASE + UART_RBR);
-	/* line status reg */
-	status = uart_readb(UART_BASE + UART_LSR);
+   /* rx buffer reg
+    * throw away (unconditionally the first time)
+    */
+   (void)uart_readb(UART_BASE + UART_RBR);
+   /* line status reg */
+   status = uart_readb(UART_BASE + UART_LSR);
     } while (status & UART_LSR_DR);
     return 0;
 
