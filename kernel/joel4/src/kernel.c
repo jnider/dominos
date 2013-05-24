@@ -143,7 +143,7 @@ void _main(unsigned long magic, multiboot_info_t *pInfo)
    if (serial_init() != 0)
       k_printf("Serial failed\n");
 
-   k_printf("KOS version 1.0.%i\n", _KOS_BUILD);
+   k_printf("JOEL4 version 1.0.%i\n", _JOEL4_BUILD);
 
    // Am I booted by a Multiboot-compliant boot loader?
    if (magic != MULTIBOOT_BOOTLOADER_MAGIC)
@@ -260,11 +260,18 @@ void _main(unsigned long magic, multiboot_info_t *pInfo)
    /* create root task - takes over responsibility from the kernel for all resources
       until a driver wants some of those responsibilities */
    k_printf("Creating root task\n");
-   rootTask = k_createTask(&_root_task_code_start,
-                           (unsigned int)&_root_task_code_size,
-                           (void*)&_root_task_data_start,
-                           (unsigned int)&_root_task_data_size,
-                           (unsigned int)root_task_main);
+   rootTask = k_createTask();
+	if (!rootTask)
+	{
+		k_printf("Failed\n");
+		HALT();
+	}
+
+   k_createThread(rootTask, &_root_task_code_start,
+                  (unsigned int)&_root_task_code_size,
+                  (void*)&_root_task_data_start,
+                  (unsigned int)&_root_task_data_size,
+                  (unsigned int)root_task_main);
 
 	// turn off interrupts for root task only
 	rootTask->segment.eflags &= ~EFLAGS_IF;
@@ -284,13 +291,13 @@ void _main(unsigned long magic, multiboot_info_t *pInfo)
 		uint32 numMappedPages = (uint32)&_root_task_data_size / PAGE_SIZE;
 		for (i=0; i < modSize; i+= PAGE_SIZE)
 		{
-			uint32 newpage = k_allocKernelPage();
+			void* newpage = k_allocKernelPage();
       	k_map4KPage((unsigned int*)rootTask->segment.pdbr, (unsigned int)newpage, (unsigned int)APP_DATA + (numMappedPages * PAGE_SIZE) + i,
          	MEMORY_PAGE_WRITE | MEMORY_PAGE_USER_MODE);
 			
 			// now copy the data to the user-accessible space
-			k_printf("copying from: 0x%x to 0x%x size: %i\n", (void*)mod->mod_start, newpage, PAGE_SIZE);
-			k_memcpy(newpage, (void*)mod->mod_start, modSize);
+			k_printf("copying from: 0x%x to 0x%x size: %i\n", ((void*)mod->mod_start) + i, newpage, PAGE_SIZE);
+			k_memcpy(newpage, ((void*)mod->mod_start) + i, modSize);
 		}
 
 
