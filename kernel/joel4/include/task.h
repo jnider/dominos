@@ -8,8 +8,8 @@
 #ifndef _KTASK__H
 #define _KTASK__H
 
+#include "l4.h"
 #include "gdt.h"
-//#include "kmessage.h"   // KOSMessage
 #include "isr.h"        // regs_t
 
 #define MAX_TASKS    10 ///< how many tasks are allowed to run simultaneously
@@ -200,7 +200,8 @@ extern task_t osTask;
 ////////////////////////////////////////////////////////////////////////////////
 void k_initTask(unsigned short codeSeg, unsigned short dataSeg, unsigned short stackSegInt, unsigned int intstack);
 
-task_t* k_createTask(unsigned int* code, unsigned int codeSize, unsigned int* data, unsigned int dataSize, unsigned int entryPoint);              ///< creates a new task
+task_t* k_createTask(void);              ///< creates a new task
+task_t* k_createThread(task_t* pTask, uint32* code, uint32 codeSize, uint32* data, uint32 dataSize, uint32 entryPoint);              ///< creates a new thread
 void k_setTaskAsPending(task_t* pTask, taskState state);    ///< adds a task to the pending list
 void k_setTaskAsReady(task_t* pTask);                       ///< adds a task to the ready list
 task_t* k_getTaskByID(unsigned int taskID);                 ///< gets a task by its id

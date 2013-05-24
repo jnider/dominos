@@ -260,11 +260,18 @@ void _main(unsigned long magic, multiboot_info_t *pInfo)
    /* create root task - takes over responsibility from the kernel for all resources
       until a driver wants some of those responsibilities */
    k_printf("Creating root task\n");
-   rootTask = k_createTask(&_root_task_code_start,
-                           (unsigned int)&_root_task_code_size,
-                           (void*)&_root_task_data_start,
-                           (unsigned int)&_root_task_data_size,
-                           (unsigned int)root_task_main);
+   rootTask = k_createTask();
+	if (!rootTask)
+	{
+		k_printf("Failed\n");
+		HALT();
+	}
+
+   k_createThread(rootTask, &_root_task_code_start,
+                  (unsigned int)&_root_task_code_size,
+                  (void*)&_root_task_data_start,
+                  (unsigned int)&_root_task_data_size,
+                  (unsigned int)root_task_main);
 
 	// turn off interrupts for root task only
 	rootTask->segment.eflags &= ~EFLAGS_IF;
