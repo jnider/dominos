@@ -1,0 +1,50 @@
+Interrupts are always disabled in kernel-space
+Interrupts are always enabled in user-space
+
+startup:
+disable interrupts
+machine-specific initialization
+init page tables
+init interrupt stubs
+init system calls
+init task management
+init root task
+jump to root task
+
+root task:
+find init.cpio
+load boot.txt
+load each module specified in order
+
+Task creation
+-------------
+Task scheduling should be managed in user-space.  By scheduling I mean selecting the next thread that is ready
+to run on a particular processor.  That way, when a task switch is ready to occur (end of time slice, blocking
+IO, etc) the kernel only needs to take the 'next' pointer and run it - no logic (policy).
+So if all of the scheduling is to take place in user-space, then it follows that the task lists must also be in
+userspace.  It would be horribly inefficient if the scheduler had to ask the kernel for the task list each time
+it needed to prioritize tasks.  So the task lists (ready to run queue, all task queue) must be in user-space.
+So if all the queues are in userspace it would make sense that task management (creation, deletion, etc) would
+also take place in userspace.  However, there is a part of the process that must be handled by the kernel. Each
+task is backed by a memory space, and the address containing the page directory (at least on x86) must reside
+in physical memory (and be addressed by physical address).  It is the physical address of the page directory 
+that gets loaded into the CR3 register. That also implies that page directories cannot be swapped out, since they
+have no virtual address.  Alternatively, all of the page directories could be mapped into every task, thus giving
+it a virtual address.  So then it raises the question why do all of the tasks need access to all of the page
+directories - to which the answer is - only for task switching. The current task would need to be able to 
+guarantee that the new task's page directory is in physical memory before the task switch occurs (otherwise we
+couldn't switch CR3 to that physical page if the wrong contents are there).  That means potentially having a
+page fault before each task switch, which doesn't really seem efficient.  So to avoid this issue, I would like
+to guarantee that all page directories reside in physical memory at all times.  And that tasks don't need access
+to the page directories (certainly not for other tasks, and not even for its own).  So to accomplish this, all
+of the page directories are kept in kernel memory.  Now, to prevent TLB flushes on task switching as much as
+possible, the entire kernel contents are mapped into the memory space of each task, but as read-only.  So
+technically, the kernel wouldn't need to map the page directories, so long as the physical pages are marked as
+used in the memory manager.  That would probably be best.  But in any case, the kernel is the only entity
+which knows the physical address of the page directory for a task.  The kernel can certainly pass this address
+to the task once it is created (but it really has no need), but still the kernel must be notified that a task
+has been created, and that it should allocate a page directory to this new task.  So that means an API call
+is needed to allocate a page directory.
+
+
+

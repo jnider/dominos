@@ -8,3 +8,5 @@ joel4.elf
 *.iso
 *.user
 obj/*
+init.cpio
+tags*

@@ -65,16 +65,31 @@ void k_initTask(unsigned short codeSeg, unsigned short dataSeg, unsigned short s
    //ISR_RegisterISRHandler(48, k_cooperate);	// allow for cooperative multitasking (giving up timeslices)
 }
 
-task_t* k_createTask(unsigned int* code, unsigned int codeSize, unsigned int* data, unsigned int dataSize, unsigned int entryPoint)
+task_t* k_createTask(void)
 {
-   int i;
-
    // allocate the structure for the context
    task_t* pTask = (task_t*)kmalloc(sizeof(task_t));
+   if (!pTask)
+   {
+      k_printf("Out of kernel memory\n");
+      return 0;
+   }
 
    k_memcpy(pTask, &defaultTaskParams, sizeof(task_t));
    pTask->taskID = createTaskID();
    k_printf("Task ID: 0x%x\n", pTask->taskID);
+
+   // add it to the all task list
+   k_printf("task: add to list\n");
+   k_taskListAdd(&allTaskList, pTask);
+
+   return pTask;
+}
+
+task_t* k_createThread(task_t* pTask, unsigned int* code, unsigned int codeSize, unsigned int* data, unsigned int dataSize, unsigned int entryPoint)
+{
+   int i;
+
    k_printf("Code: 0x%x (0x%x)\n", code, codeSize);
    k_printf("Data: 0x%x (0x%x)\n", data, dataSize);
    k_printf("Entry point: 0x%x\n", entryPoint);
@@ -117,11 +132,6 @@ task_t* k_createTask(unsigned int* code, unsigned int codeSize, unsigned int* da
          MEMORY_PAGE_WRITE | MEMORY_PAGE_USER_MODE);
    }
 
-   // add it to the all task list
-   k_printf("task: add to list\n");
-   k_taskListAdd(&allTaskList, pTask);
-
-   return pTask;
 }
 
 task_t* k_getCurrentTask()
