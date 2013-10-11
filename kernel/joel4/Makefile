@@ -4,6 +4,12 @@
 #
 # jnider 17-08-2012
 
+# build the kernel and update tags
+# this target must be defined before the other makefile fragments are included below
+# specifically 'tools.mk' defines the 'tools' rule which would become the default rule
+all: joel4.elf tags
+	@echo "Build complete"
+
 include tools.mk
 include rules.mk
 include files.mk
@@ -20,10 +26,6 @@ ifeq ($(OPTIONS),y)
 all: options
 endif
 
-# build the kernel and update tags
-all: joel4.elf tags
-	@echo "Build complete"
-
 # if the DEBUG option is set, build additional debug files
 ifeq ($(DEBUG),y)
 all: debug
@@ -32,7 +34,7 @@ endif
 # link the ELF - this should be moved to rules
 %.elf: output_dir version $(OBJS)
 	@echo "Linking $@"
-	@$(LD) $(OBJS) -T $*.ld -o $@
+	@$(LD) $(LDFLAGS) $(OBJS) -T $*.ld -o $@
 
 # print all the variables
 options:
