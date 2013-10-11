@@ -4,7 +4,21 @@
 # to be used during the building of the project
 # such as compiler, assembler, linker, etc.
 #
+# if you add a new tool, make sure you add it to the 'tool' target
+# to make sure the tool exists
+#
 # jnider 17-08-2012
+
+# make sure all the needed tools are installed correctly
+# this is a cheap version of this function - I'm sure someone can come up
+# with something better in the future.
+tools:
+	@echo "Checking for the existence of required tools"
+	which $(CC)
+	which $(LD)
+	which $(AS)
+	which $(CTAGS)
+	which $(AWK)
 
 CC=gcc
 LD=ld
@@ -26,4 +40,4 @@ endif
 
 ASMFLAGS=--32
 
-LDFLAGS=-melf_i386
+LDFLAGS=-melf_i386 # link in ELF format
