@@ -234,7 +234,7 @@ __inline int k_map4KPage(unsigned int* pPageDir, unsigned int physical, unsigned
    unsigned int* pLogTable;
    int alloc = 0;
 
-   k_printf("map 4K dir:0x%x phys:0x%x log:0x%x flags:0x%x\n", pPageDir, physical, logical, flags);
+   //k_printf("map 4K dir:0x%x phys:0x%x log:0x%x flags:0x%x\n", pPageDir, physical, logical, flags);
 
    // make sure the table is present
    unsigned int tableIndex = GET_DIR_INDEX(logical);
@@ -257,7 +257,7 @@ __inline int k_map4KPage(unsigned int* pPageDir, unsigned int physical, unsigned
 
    // get the physical address of the page table
    pTable = (void*)GET_DISK_LOCATION(pPageDir[tableIndex]);
-   k_printf("table index: 0x%x phys: 0x%x\n", tableIndex, pTable);
+   //k_printf("table index: 0x%x phys: 0x%x\n", tableIndex, pTable);
 
    /* map target table locally */
    if (pPageDir == kernelPageDir)
