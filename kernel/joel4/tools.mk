@@ -19,12 +19,14 @@ tools:
 	which $(AS)
 	which $(CTAGS)
 	which $(AWK)
+	which $(CLOC)
 
 CC=gcc
 LD=ld
 AS=as
 CTAGS=ctags
 AWK=awk
+CLOC=cloc
 
 CFLAGS+=-fno-stack-protector # stack protector functions are not implemented yet
 CFLAGS+=-nostdinc # don't include paths other than what I tell you
