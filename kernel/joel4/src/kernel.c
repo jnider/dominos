@@ -300,7 +300,6 @@ void _main(unsigned long magic, multiboot_info_t *pInfo)
 			k_memcpy(newpage, ((void*)mod->mod_start) + i, modSize);
 		}
 
-
    	/* save some information for the boot task on it's stack (as a parameter) */
 		rootTask->segment.esp -= sizeof(BootInfo) + 4; //adjust the stack so as to leave room for the parameter
    	BootInfo* pBootInfo = (BootInfo*)(0x706000 - sizeof(BootInfo)); //0x705ff0
@@ -309,9 +308,6 @@ void _main(unsigned long magic, multiboot_info_t *pInfo)
 		pBootInfo->initDataSize = modSize;
 		pBootInfo->freeMem = pInfo->mem_upper;
    }
-
-
-   //pInfo->mem_upper
 
    // now start user space, effectively running the first task (root task) 
 	// interrupts are enabled inside user-space tasks automatically (tss)
