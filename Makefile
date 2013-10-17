@@ -18,3 +18,9 @@ drivers:
 
 init.cpio: initfiles.txt boot.txt drivers
 	cpio --format=newc -o < initfiles.txt > init.cpio
+
+clean:
+	make -C $(KERNEL_DIR) clean
+	make -C drivers clean
+	rm init.cpio
+	rm dominos.iso
