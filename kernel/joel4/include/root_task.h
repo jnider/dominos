@@ -1,3 +1,8 @@
+#ifndef _ROOT_TASK__H
+#define _ROOT_TASK__H
+
+typedef unsigned int uint32;
+
 typedef struct BootInfo
 {
 	uint32 initData;
@@ -51,3 +56,6 @@ typedef struct cpio_newc_header {
 	   } cpio_newc_header;
 
 #define CPIO_NEWC_MAGIC "070701"
+
+#endif // _ROOT_TASK__H
+
