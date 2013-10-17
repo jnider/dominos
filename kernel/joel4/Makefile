@@ -64,7 +64,10 @@ clean:
 	rm -rf $(OUTPUT_DIR)
 	rm -rf $(OUTPUT_NAME).elf
 
-.PHONY: tags
+.PHONY: tags cloc
 
 tags:
-	$(CTAGS) -f tags src/* include/*
+	$(CTAGS) -f tags $(SRC_DIR)/* include/*
+
+cloc:
+	$(CLOC) $(SRC_DIR) include
