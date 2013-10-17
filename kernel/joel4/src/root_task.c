@@ -13,10 +13,13 @@
 #define READ_BUF_SIZE 512
 #define INVALID_HANDLE 0xFFFFFFFF
 
+#define DEFAULT_UTCB 0x801000
+
 typedef uint32 cpio_handle;
 typedef uint32 file_handle;
 
 static void* cpioArchive;
+static Word threadId=2;
 
 static void itoa (char* buf, int base, int d)
 {
@@ -233,11 +236,23 @@ static char* cpio_open_file(cpio_handle h, const char* filename, uint32* filesiz
    return 0;
 }
 
+/* this needs to be improved to support reused thread ID's */
+static L4_ThreadId GetFreeThreadId(void)
+{
+   return threadId++;
+}
+
 static int LoadProgram(const char* name, const char* buffer, uint32 size)
 {
+   Word rc;
+   L4_ThreadId newThread;
+
    printf("Loading program %s from 0x%x size %i bytes\n", name, buffer, size);
 
    // loading consists of creating a task, and a memory space
+   newThread = GetFreeThreadId();
+   printf("Creating thread %i\n", newThread);
+   rc = L4_ThreadControl(newThread, newThread, L4_Myself(), L4_Myself(), (void*)DEFAULT_UTCB);
 
    return 0;
 }

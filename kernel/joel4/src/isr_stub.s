@@ -318,6 +318,10 @@ syscall:
    
    # save ebx on the stack - this becomes the variable "param1"
    pushl %ebx
+   pushl %ds # param 2
+   pushl %es # param 3
+   pushl %fs # param 4
+   pushl %gs # param 5
    
    mov $syscall_handler_table, %esi # move the address of the table into ESI
    movl (%esi, %eax, 4), %ebx       # calculate the offset of the function pointer

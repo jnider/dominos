@@ -44,6 +44,9 @@ typedef void(*pFnMain_t)(void*);
 /// associated with those terms.  Here, a task has its own memory space and
 /// its own message queue for incoming requests from other tasks.  Tasks also
 /// have a state which tells us if it is running or not, and if not, why.
+///
+/// JKN 16/10/2013: this has now changed, to realign with L4. It is likely 
+/// that this should all be renamed to 'thread', but we'll see.
 ////////////////////////////////////////////////
 typedef struct task_t
 {
@@ -201,7 +204,7 @@ extern task_t osTask;
 void k_initTask(unsigned short codeSeg, unsigned short dataSeg, unsigned short stackSegInt, unsigned int intstack);
 
 task_t* k_createTask(void);              ///< creates a new task
-task_t* k_createThread(task_t* pTask, uint32* code, uint32 codeSize, uint32* data, uint32 dataSize, uint32 entryPoint);              ///< creates a new thread
+task_t* k_createThread(task_t* pTask, Word* code, Word codeSize, Word* data, Word dataSize, Word entryPoint);              ///< creates a new thread
 void k_setTaskAsPending(task_t* pTask, taskState state);    ///< adds a task to the pending list
 void k_setTaskAsReady(task_t* pTask);                       ///< adds a task to the ready list
 task_t* k_getTaskByID(unsigned int taskID);                 ///< gets a task by its id
