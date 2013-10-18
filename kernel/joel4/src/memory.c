@@ -304,7 +304,7 @@ static void k_unmap4KPage(unsigned int* pPageDir, unsigned int logical)
 {
    unsigned int* pTable;
 
-   k_printf("Unmapping: logical addr 0x%x\n", logical);
+   //k_printf("Unmapping: logical addr 0x%x\n", logical);
 
    if (pPageDir != kernelPageDir)
    {
