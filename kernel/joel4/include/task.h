@@ -160,7 +160,7 @@ static inline task_t* k_taskListFindByID(task_list* list, int id)
 
    /* make sure there is a node */
    if (!pNode)
-      return;
+      return 0;
 
    while (pNode)
    {
