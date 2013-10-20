@@ -94,7 +94,7 @@ unsigned short GDT_SetTSS(unsigned short index, const tss_t* pTSS, PrivilegeLeve
 }
 
 // Initializes the GDT
-void GDT_Init()
+void GDT_Init(void)
 {
    // initialize the whole table
    k_memset(gdt, 0, MAX_GDT_ENTRIES * sizeof(gdt_entry_t));
@@ -108,7 +108,7 @@ void GDT_Load(unsigned short csIndex, unsigned short dsIndex)
    gp.limit = (sizeof(gdt_entry_t) * numEntries) - 1;
    gp.pBase = gdt;
 
-   __ASM("lgdt %0\n" :: "am"(gp));
+   __ASM("lgdtl %0\n" :: "m"(gp));
    __ASM("mov %0, %%ax\n" :: "am"(dsIndex));
    __ASM("mov %ax, %ds\n");
    __ASM("mov %ax, %es\n");
