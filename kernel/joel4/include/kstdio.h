@@ -11,7 +11,7 @@
 
 #define __KERNEL_RETURN()              __ASM("leave\nlret\n")
 
-#define SEGMENT_INDEX(_index, _ldt, _priv)  (((_index & 0x1F) << 3) | ((_ldt & 1) << 2) | (_priv & 0x3))   ///< makes a segment index
+#define SEGMENT_INDEX(_index, _ldt, _priv)  (unsigned short)(((_index & 0x1F) << 3) | ((_ldt & 1) << 2) | (_priv & 0x3))   ///< makes a segment index
 
 typedef long unsigned int size_t; // JKN - leave this for the stdlib (pdclib)
 
