@@ -203,7 +203,8 @@ void _main(unsigned long magic, multiboot_info_t *pInfo)
    ISR_Init();
    //k_printf("Loading IDT\n");
    IDT_Init(SEGMENT_INDEX(KERNEL_CODE_SEGMENT, 0, PRIVILEGE_LEVEL_KERNEL));
-   //k_printf("Loading GDT\n");
+
+   k_printf("Entering protected mode\n");
    GDT_Load(SEGMENT_INDEX(KERNEL_CODE_SEGMENT, 0, PRIVILEGE_LEVEL_KERNEL),
             SEGMENT_INDEX(KERNEL_DATA_SEGMENT, 0, PRIVILEGE_LEVEL_KERNEL));
 
@@ -216,7 +217,7 @@ void _main(unsigned long magic, multiboot_info_t *pInfo)
 
    // load the task segment for the kernel task
    k_printf("Loading TSS\n");
-   unsigned int ostss_index = SEGMENT_INDEX(KERNEL_TSS_SEGMENT, 0, PRIVILEGE_LEVEL_KERNEL);
+   unsigned short ostss_index = SEGMENT_INDEX(KERNEL_TSS_SEGMENT, 0, PRIVILEGE_LEVEL_KERNEL);
    LOAD_TASK_REGISTER(ostss_index);
 
    /* calculate free space, and set up heap */
