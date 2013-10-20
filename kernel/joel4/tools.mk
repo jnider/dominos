@@ -37,7 +37,7 @@ ifeq ($(DEBUG),y)
 CFLAGS+=-g # add debugging info
 CFLAGS+=-O0 # no optimizations
 else
-CFLAGS+=-O0 # many optimizations
+CFLAGS+=-O1 # many optimizations
 endif
 
 ASMFLAGS=--32
