@@ -16,11 +16,11 @@
 #define CR4_PAE (1<<5)     // 1=Physical Address Extensions enabled
 
 // page fault codes
-#define PAGE_FAULT_PRESENCE      0x0001
-#define PAGE_FAULT_WRITE     0x0002      // write access violation
-#define _PF_CODE_US     0x0004
-#define _PF_CODE_RSVD   0x0008
-#define _PF_CODE_ID     0x0010
+#define PAGE_FAULT_PRESENCE   0x0001
+#define PAGE_FAULT_WRITE      0x0002      // write access violation
+#define PAGE_FAULT_USER       0x0004      // code running in user(1) or supervisor(0) mode
+#define PAGE_FAULT_RSVD       0x0008      // a reserved bit is 1 with PSE or PAE enabled
+#define PAGE_FAULT_IFETCH     0x0010      // caused by instruction fetch
 
 #define BUILD_LOGICAL(_dirIndex, _tableIndex) ((_dirIndex << 22) | (_tableIndex << 12))
 #define GET_DIR_INDEX(_addr)        (_addr >> 22)
@@ -225,7 +225,7 @@ __inline void k_map4MPage(unsigned int* pPageDir, unsigned int physical, unsigne
 {
    k_printf("map 4M dir:0x%x phys:0x%x log:0x%x flags:0x%x\n", pPageDir, physical, logical, flags);
 
-   pPageDir[GET_DIR_INDEX(logical)] = GET_DISK_4M_LOCATION(physical) | MEMORY_DIR_ENTRY_PRESENT | MEMORY_DIR_ENTRY_SIZE | flags;
+   pPageDir[GET_DIR_INDEX(logical)] = GET_DISK_4M_LOCATION(physical) | MEMORY_PAGE_TABLE_PRESENT | MEMORY_PAGE_TABLE_SIZE | flags;
 }
 
 __inline int k_map4KPage(unsigned int* pPageDir, unsigned int physical, unsigned int logical, unsigned int flags)
@@ -358,7 +358,7 @@ int k_initMemory(void* pageStore)
 
    /* map the kernel memory 1:1 */
    for (i=0; i < KERNEL_MEMORY_LIMIT; i+= PAGE_SIZE_4M)
-      k_map4MPage(kernelPageDir, i, i, MEMORY_DIR_ENTRY_WRITE | MEMORY_DIR_ENTRY_GLOBAL);
+      k_map4MPage(kernelPageDir, i, i, MEMORY_PAGE_TABLE_WRITE | MEMORY_PAGE_TABLE_GLOBAL);
 
    /* allocate kernel temporary page table */
    //kernelTempTable = k_allocKernelPage();
@@ -382,6 +382,8 @@ int k_initMemory(void* pageStore)
 
 void _fh_page_fault(regs_t* pRegs)
 {
+   unsigned int* pDir;
+
    // the address that generated the page fault is stored in CR2
    unsigned int addr = readCR2();
    // a page fault can happen for 5 reasons:
@@ -390,31 +392,44 @@ void _fh_page_fault(regs_t* pRegs)
    // 3) trying to write to a read-only page
    // 4) trying to execute non-executable page
    // 5) a reserved bit is not 0
-   // luckily, we can see the reason for the fault in the error code:
-   if (pRegs->err_code & PAGE_FAULT_PRESENCE)
-   {
-      k_printf("page 0x%x not present\n", addr);
-   }
-   else if (pRegs->err_code & PAGE_FAULT_WRITE)
-   {
-      k_printf("write access violation at: 0x%x\n", addr);
-   }
-   else
-   {
-      k_printf("read access violation at: 0x%x\n", addr);
-   }
+   // luckily, we can see the reason for the fault in the error code
 
+   // print the reason
+   if (pRegs->err_code & PAGE_FAULT_WRITE)
+      k_printf("write access ");
+   else
+      k_printf("read access ");
+
+   if (pRegs->err_code & PAGE_FAULT_PRESENCE)
+      k_printf("0x%x access violation\n", addr);
+   else
+      k_printf("0x%x not present\n", addr);
+
+   if (pRegs->err_code & PAGE_FAULT_USER)
+      k_printf("user mode\n");
+   else
+      k_printf("supervisor mode\n");
+
+   if (pRegs->err_code & PAGE_FAULT_RSVD)
+      k_printf("a reserved bit is 1\n");
+
+   if (pRegs->err_code & PAGE_FAULT_IFETCH)
+      k_printf("caused during instruction fetch\n");
+
+   // now see if we can handle it
 	//k_printf("task: 0x%x\n", k_getCurrentTask()->taskID);
    k_printRegs(pRegs);
+   asm __volatile__ ("movl %%cr3, %0": "=a" (pDir));
+   k_printf("page dir: 0x%x\n", pDir);
+   k_dumpPageDirectory(pDir);
 
-   /*
    unsigned int tableIndex = GET_DIR_INDEX(addr);
    if (k_isTablePresent(pDir, tableIndex))
    {
       k_printf("table 0x%x is present\n", tableIndex);
       unsigned int location = GET_DISK_LOCATION(pDir[tableIndex]);
       k_printf("phys page 0x%x\n", location);
-      PageTable* pTable = (PageTable*)location;
+      unsigned int* pTable = (unsigned int*)location;
       unsigned int index = GET_PAGE_INDEX(addr);
       k_printf("index 0x%x\n", index);
       unsigned int entry = pTable[index];
@@ -427,7 +442,6 @@ void _fh_page_fault(regs_t* pRegs)
    {
       k_printf("table 0x%x is not present\n", tableIndex);
    }
-   */
    HALT();
 }
 
@@ -435,3 +449,33 @@ __inline void* k_getKernelPageDirectory(void)
 {
    return kernelPageDir;
 }
+
+void k_dumpPageDirectory(unsigned int* pDir)
+{
+   unsigned int i;
+   char flags[8];
+   k_printf("----------- Page Directory 0x%x contents -----------\n", pDir);
+   for (i=0; i < PAGE_DIRECTORY_MAX_ENTRIES; i++)
+   {
+      if (pDir[i] != 0)
+      {
+         k_memset(flags, 0, 8);
+         if (pDir[i] & MEMORY_PAGE_TABLE_PRESENT)
+            flags[0] = 'P';
+         if (pDir[i] & MEMORY_PAGE_TABLE_WRITE)
+            flags[1] = 'W';
+         if (pDir[i] & MEMORY_PAGE_TABLE_USER_MODE)
+            flags[2] = 'U';
+         if (pDir[i] & MEMORY_PAGE_TABLE_RESERVED)
+            flags[3] = '*';
+         if (pDir[i] & MEMORY_PAGE_TABLE_SIZE)
+            flags[4] = 'M';
+         else
+            flags[4] = 'K';
+         if (pDir[i] & MEMORY_PAGE_TABLE_GLOBAL)
+            flags[5] = 'G';
+         k_printf("%i: 0x%08x [%s]\n", i, pDir[i], flags);
+      }
+   }
+}
+

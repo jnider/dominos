@@ -104,7 +104,7 @@ task_t* k_createThread(task_t* pTask, unsigned int* code, unsigned int codeSize,
 
    // map the kernel
    for (i=0; i < KERNEL_MEMORY_LIMIT; i+=PAGE_SIZE_4M)
-      k_map4MPage((unsigned int*)pTask->segment.pdbr, i, i, MEMORY_DIR_ENTRY_USER_MODE);
+      k_map4MPage((unsigned int*)pTask->segment.pdbr, i, i, MEMORY_PAGE_TABLE_USER_MODE);
 
    // map the table - for now, take it from the kernel
    k_printf("Task: map tables\n");

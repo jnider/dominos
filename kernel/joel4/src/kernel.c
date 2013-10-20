@@ -311,8 +311,9 @@ void _main(unsigned long magic, multiboot_info_t *pInfo)
 
    // now start user space, effectively running the first task (root task) 
 	// interrupts are enabled inside user-space tasks automatically (tss)
-   k_printf("switching to root task\n");
    k_memcpy(&userTSS, &rootTask->segment, sizeof(tss_t));
+   k_printf("switching to root task (PDBR=0x%x)\n", userTSS.pdbr);
+   k_dumpPageDirectory((unsigned int*)userTSS.pdbr);
    unsigned int task_sel[2];
    task_sel[0] = 0;
    task_sel[1] = SEGMENT_INDEX(USER_TSS_SEGMENT, 0, PRIVILEGE_LEVEL_USER);

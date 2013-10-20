@@ -9,20 +9,9 @@
 #define MEMORY_PAGE_TABLE_CACHED       (1<<4)   // cached
 #define MEMORY_PAGE_TABLE_ACCESSED     (1<<5)   // accessed
 #define MEMORY_PAGE_TABLE_RESERVED     (1<<6)   // reserved bit - must be 0
-#define MEMORY_PAGE_TABLE_SIZE         (1<<7)   // 0=4Kb page
+#define MEMORY_PAGE_TABLE_SIZE         (1<<7)   // 0=4Kb page 1=4M
 #define MEMORY_PAGE_TABLE_GLOBAL       (1<<8)   // global table
-// bits 0x0200, 0x0400 and 0x0800 are available for system use
 
-// Page directory entry flags
-#define MEMORY_DIR_ENTRY_PRESENT       (1<<0)   // 1=entry present
-#define MEMORY_DIR_ENTRY_WRITE         (1<<1)   // 1=write access
-#define MEMORY_DIR_ENTRY_USER_MODE     (1<<2)   // 0=supervisor mode, 1=user mode
-#define MEMORY_DIR_ENTRY_WRITETHROUGH  (1<<3)   // write-through
-#define MEMORY_DIR_ENTRY_CACHED        (1<<4)   // cached
-#define MEMORY_DIR_ENTRY_ACCESSED      (1<<5)   // accessed
-#define MEMORY_DIR_ENTRY_DIRTY         (1<<6)   // reserved bit - must be 0
-#define MEMORY_DIR_ENTRY_SIZE          (1<<7)   // 0=4K 1=4M
-#define MEMORY_DIR_ENTRY_GLOBAL        (1<<8)   // global table
 // bits 0x0200, 0x0400 and 0x0800 are available for system use
 #define MEMORY_DIR_ENTRY36_BASE_ADDR     (0x1F<<13)
 #define MEMORY_DIR_ENTRY_BASE_ADDR(_x)   (_x & 0xFFC00000)
@@ -62,6 +51,9 @@ __inline void k_map4MPage(unsigned int* pPageDir, unsigned int physical, unsigne
 __inline int k_map4KPage(unsigned int* pPageDir, unsigned int physical, unsigned int logical, unsigned int flags);
 void* k_realCreatePageTable(unsigned int* pDir, unsigned int index, int global);
 void k_mapTable(unsigned int* pPageDir, unsigned int address, unsigned int* pTable);
+
+/// DEBUG FUNCTIONS
+void k_dumpPageDirectory(unsigned int* pDir);
 
 #endif /* _MEMORY__H */
 
