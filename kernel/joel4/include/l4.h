@@ -22,18 +22,54 @@ typedef Word L4_GrantItem[2];
 typedef Word L4_Fpage; // flex page (flexible size memory page)
 
 #ifdef ARCH_IA32
-#define SYSCALL(_reason, _ret, _param1)   asm volatile (                               \
+/* A note about register selection for passing parameters using the SYSENTER method:
+ *
+ * The X.2 document specifies register choices for passing parameters, but the spec
+ * seems unreasonable. The SYSENTER instruction does not save the stack or instruction
+ * pointer of the calling function. This is a problem since we need to be able to return
+ * to where the system call was called from. In the SYSEXIT instruction (companion to
+ * SYSENTER) the registers ECX and EDX are specified for this purpose; holding the stack
+ * pointer and instruction pointer respectively. In any case, this information must be
+ * passed to the system call for later use.
+ *
+ * EAX: system call index
+ * ECX: parameter 1
+ * EDX: parameter 2
+ * ESI: parameter 3
+ * EDI: parameter 4
+ * EBX: parameter 5
+ * EBP: parameter 6
+ * ESP: parameter 7
+ *
+ * This does not leave any more general purpose registers that can be accessed from
+ * inside the system call. So since we must use 2 registers for passing the CS:IP,
+ * it makes sense to use ECX & EDX for this purpose. So it seems the SYSENTER/SYSEXIT
+ * mechanism (which is the fastest way to make a system call in x86 32-bit mode) is
+ * not compatible with the X.2 spec.
+ *
+ * Therefore, I suggest renaming the registers is the following way:
+ *
+ * EAX: system call index
+ * ECX: caller's stack pointer
+ * EDX: caller's instruction pointer
+ * ESI: parameter 1
+ * EDI: parameter 2
+ * EBX: parameter 3
+ * EBP: parameter 4
+ * ESP: parameter 5
+ *
+ */
+#define SYSCALL(_reason, _ret, _p1, _p2) asm volatile (                 \
         "pushl %%ebp       \n"      /* save the base pointer for when we come back */  \
         "movl %%esp, %%ecx \n"      /* save the stack pointer in ECX */                \
         "leal 1f, %%edx    \n"      /* save the instruction pointer in EDX */          \
         "sysenter          \n"      /* make the call */                                \
         "1:                \n"                                                         \
         "popl %%ebp        \n"      /* restore the base pointer, and we're done */     \
-        : "=A" (_ret)                                                                   \
-        : "a" (_reason),            /* EAX = syscall reason */                         \
-          "b" (_param1)             /* EBX = param 1 */                                \
+        : "=A" (_ret)                                                                  \
+        : "%eax" (_reason),            /* EAX = syscall reason */                         \
+          "b" (_p1)                /* ESI = param 1 */                                \
           : "%edx");
-
 #endif
 
 /* constants */
@@ -43,10 +79,10 @@ typedef Word L4_Fpage; // flex page (flexible size memory page)
 /**
  * returns the base address of the KIP (kernel interface page) as mapped in the current address space
  */
-static inline void* L4_KernelInterface(Word* ApiVersion, Word* ApiFlags, Word* KernelId) 
+static inline void* L4_KernelInterface(register Word* ApiVersion, Word* ApiFlags, Word* KernelId) 
 {
    Word ret;
-   SYSCALL(SYSCALL_KERNEL_INTERFACE, ret, 0);
+   SYSCALL(SYSCALL_KERNEL_INTERFACE, ret, 0, 0);
    return (void*)ret;
 }
 
@@ -74,7 +110,7 @@ L4_ThreadId L4_ExchangeRegisters(L4_ThreadId dest, Word control, Word sp, Word i
 static inline Word L4_ThreadControl(L4_ThreadId dest, L4_ThreadId SpaceSpecifier, L4_ThreadId Scheduler, L4_ThreadId Pager, void* UtcbLocation)
 {
    Word ret;
-   SYSCALL(SYSCALL_THREAD_CONTROL, dest, ret);
+   //SYS_THREAD_CONTROL(SYSCALL_KERNEL_INTERFACE, ret, dest, 0);
    return ret;
 }
 
@@ -102,7 +138,7 @@ inline void L4_DebugHalt(void);
 static inline void L4_DebugPutChar(char c)
 {
    Word ret;
-   SYSCALL(SYSCALL_DEBUG_PUT_CHAR, ret, c);
+   SYSCALL(SYSCALL_DEBUG_PUT_CHAR, ret, c, 0);
 }
 
 #ifdef ARCH_IA32
