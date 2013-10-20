@@ -71,3 +71,5 @@ tags:
 
 cloc:
 	$(CLOC) $(SRC_DIR) include
+
+-include $(C_SRC:.c=.P)

@@ -17,4 +17,11 @@ objs/%.o: src/%.s
 
 objs/%.o: src/%.c
 	@echo "Compiling $<"
+	@$(MAKEDEPEND); \
+      cp $(*F).d $(*F).P; \
+      sed -e 's/#.*//' -e 's/^[^:]*: *//' -e 's/ *\\$$//' \
+          -e '/^$$/ d' -e 's/$$/ :/' < $*.d >> objs/$(*F).P; \
+      rm -f objs/$(*F).d
 	@$(CC) $(CFLAGS) $(INCLUDE_PATHS) -c $< -o $@
+
+MAKEDEPEND=$(CC) -M $(CFLAGS) $(INCLUDE_PATHS) -c $< -o $(*F).d
