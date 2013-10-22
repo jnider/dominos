@@ -136,6 +136,6 @@ unsigned short GDT_SetTSS(unsigned short index, const tss_t* pTSS, PrivilegeLeve
 /**
  * Loads the global descriptor table into the processor, thus enabling segmentation
  */
-void GDT_Load(unsigned short csIndex, unsigned short dsIndex);
+int GDT_Load(unsigned short csIndex, unsigned short dsIndex);
 
 #endif // _GDT_H_

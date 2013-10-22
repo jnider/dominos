@@ -39,6 +39,7 @@ static gdt_entry_t gdt[MAX_GDT_ENTRIES] __attribute__((aligned(8)));   ///< Glob
 static gdt_ptr_t gp;                   ///< pointer to the GDT to be loaded into the processor
 static unsigned short numEntries = 0;  ///< the number of used entries in the GDT
 
+
 // Set up a descriptor
 void GDT_SetSegment(unsigned short index, unsigned long base, unsigned long limit, DescriptorType type, PrivilegeLevel dpl)
 {
@@ -102,14 +103,14 @@ void GDT_Init(void)
 }
 
 // load the GDT
-void GDT_Load(unsigned short csIndex, unsigned short dsIndex)
+int GDT_Load(unsigned short csIndex, unsigned short dsIndex)
 {
    // set up the GDT pointer
    gp.limit = (sizeof(gdt_entry_t) * numEntries) - 1;
    gp.pBase = gdt;
 
    __ASM("lgdtl %0\n" :: "m"(gp));
-   __ASM("mov %0, %%ax\n" :: "am"(dsIndex));
+   __ASM("mov %0, %%ax\n" :: "m"(dsIndex));
    __ASM("mov %ax, %ds\n");
    __ASM("mov %ax, %es\n");
    __ASM("mov %ax, %fs\n");
@@ -120,10 +121,16 @@ void GDT_Load(unsigned short csIndex, unsigned short dsIndex)
    task_sel[1] = csIndex;
 
    // jump to the new CS (EIP stays the same, we just get a new code segment)
-   __ASM("mov $gdt_label, %%ebx\n   \
-         mov %0, %%esi\n            \
-         mov %%ebx, (%%esi)\n       \
-         ljmp *(%0)\ngdt_label:\n" :: "am"(task_sel));
+   __ASM("mov $gdt_label, %%ebx\n" 
+         "mov %0, %%esi\n"
+         "mov %%ebx, (%%esi)\n"
+         "ljmp *(%0)\n"
+         "gdt_label:\n"
+         :: "am"(task_sel));
+   
+   //GDT_Flush(csIndex);
 
-   return;
+   // there must be some code after the jump, otherwise this doesn't work - don't know why
+   k_printf("GDT loaded\n");
+   return 0;
 }
