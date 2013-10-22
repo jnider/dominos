@@ -12,9 +12,11 @@
 #include "memory.h"                    // _BASE_ADDRESS
 #include "task.h"                     // task_t, task_list
 #include "eflags.h"
+#include "l4.h"
 
 //extern tss_t userTSS;
 extern unsigned short user_tss;
+extern L4_KIP* k_KIP;
 
 static task_list allTaskList;   ///< list of all tasks
 static task_list readyTaskQueue;///< queue of ready tasks
@@ -30,11 +32,13 @@ static unsigned int createTaskID(void)
    int found=0;
    unsigned int i;
    unsigned int id;
+   k_printf("createTaskID\n");
    do
    {
       if (found)
          nextTaskID++;
 
+      k_printf("nextTaskID: %i\n", nextTaskID);
       // look for this ID in the all task list
       found = (int)k_taskListFindByID(&allTaskList, nextTaskID);
    } while (found);
@@ -132,6 +136,10 @@ task_t* k_createThread(task_t* pTask, unsigned int* code, unsigned int codeSize,
          MEMORY_PAGE_WRITE | MEMORY_PAGE_USER_MODE);
    }
 
+   // map the KIP
+   k_printf("Task: map KIP from 0x%x to 0x%x\n", k_KIP, KERNEL_INTERFACE_PAGE);
+   k_mapTable((unsigned int*)pTask->segment.pdbr, (unsigned int)KERNEL_INTERFACE_PAGE, k_allocKernelPage());
+   k_map4KPage((unsigned int*)pTask->segment.pdbr, (unsigned int)k_KIP, (unsigned int)KERNEL_INTERFACE_PAGE, MEMORY_PAGE_USER_MODE);
 }
 
 task_t* k_getCurrentTask()

@@ -265,6 +265,14 @@ void root_task_main(BootInfo info)
    uint32 archFilesize; // size of the archive file
    uint32 progFilesize; // size of the program file
 
+   Word ApiVersion;
+   Word ApiFlags;
+   Word KernelId;
+
+   L4_KIP* pKip = L4_KernelInterface(&ApiVersion, &ApiFlags, &KernelId);
+   printf("%c%c%c%c\n", pKip->magic[0], pKip->magic[1], pKip->magic[2], pKip->magic[3]);
+
+   /*
    // first, some boot responsibilities
    printf("init image @ 0x%x size: %i\n", info.initData, info.initDataSize);
 
@@ -327,6 +335,9 @@ void root_task_main(BootInfo info)
       src++;
    }
    // enable the scheduler
+   */
+
+   printf("Complete\n");
 
    while(1);
 }
