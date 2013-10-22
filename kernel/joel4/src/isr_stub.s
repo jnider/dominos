@@ -316,20 +316,32 @@ syscall:
    pushl %edx  # save the user mode instruction pointer
    pushl %ecx  # save the user mode stack pointer
    
-   # save ebx on the stack - this becomes the variable "param1"
-   pushl %ebx
-   pushl %ds # param 2
-   pushl %es # param 3
-   pushl %fs # param 4
-   pushl %gs # param 5
+   # save parameters on the stack
+   pushl %ebp # param 5
+   pushl %esp # param 4
+   pushl %ebx # param 3
+   pushl %edi # param 2
+   pushl %esi # param 1
    
    mov $syscall_handler_table, %esi # move the address of the table into ESI
    movl (%esi, %eax, 4), %ebx       # calculate the offset of the function pointer
    call *%ebx                       # call it
    
-   addl $4, %esp
-   
+   # clean up the stack
+   addl $0x14, %esp
    popl %ecx # restore the user mode stack pointer
    popl %edx # restore the user mode instruction pointer
    sysexit
-   
+
+#.globl GDT_Flush
+#.type GDT_Flush, @function
+#GDT_Flush:
+#   push %eax
+#   movl $task_sel, %eax
+#   movl $GDT_Flush2,(%eax)
+#   ljmp *(%eax)
+#GDT_Flush2:
+#   pop %eax
+#   add $0x8, %esp
+#   ret
+

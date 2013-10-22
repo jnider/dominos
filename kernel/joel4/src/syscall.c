@@ -2,30 +2,30 @@
 #include "task.h"
 #include "memory.h"
 
-typedef Word(syscall_handler_t)(Word param1);
+typedef Word(syscall_handler_t)(Word p1, Word p2, Word p3, Word p4, Word p5);
 
 /* returns the address of the kernel interface page (KIP) */
-static inline Word KernelInterface(Word param1)
+static inline Word KernelInterface(Word p1, Word p2, Word p3, Word p4, Word p5)
 {
    k_printf("KernelInterface\n");
    return KERNEL_INTERFACE_PAGE;
 }
 
 /* create, modify or delete a thread */
-static inline Word ThreadControl(Word param1)
+static inline Word ThreadControl(Word p1, Word p2, Word p3, Word p4, Word p5)
 {
-   k_printf("ThreadControl %i\n", param1);
+   k_printf("ThreadControl %i\n", p1);
    return 0;
 }
 
-static inline Word DebugPrintChar(Word param1)
+static inline Word DebugPrintChar(Word p1, Word p2, Word p3, Word p4, Word p5)
 {
-   k_putchar((char)param1);
-   serial_putc((char)param1);
+   k_putchar((char)p1);
+   serial_putc((char)p1);
    return 0;
 }
 
-static inline Word syscall_create_task_wrapper(Word p1)
+static inline Word syscall_create_task_wrapper(Word p1, Word p2, Word p3, Word p4, Word p5)
 {
    task_t* pTask = k_createTask();
    return pTask->taskID;
@@ -39,7 +39,6 @@ syscall_handler_t* syscall_handler_table[] =
 {
    KernelInterface,
    ThreadControl,
-   DebugPrintChar,
-   syscall_create_task_wrapper
+   DebugPrintChar
 };
 

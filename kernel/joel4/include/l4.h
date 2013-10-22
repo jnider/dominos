@@ -21,6 +21,12 @@ typedef Word L4_MsgTag;
 typedef Word L4_GrantItem[2];
 typedef Word L4_Fpage; // flex page (flexible size memory page)
 
+/* KIP structure */
+typedef __attribute__((packed)) struct L4_KIP
+{
+   char magic[4];    // must be L4µK
+} L4_KIP;
+
 #ifdef ARCH_IA32
 /* A note about register selection for passing parameters using the SYSENTER method:
  *
@@ -43,7 +49,7 @@ typedef Word L4_Fpage; // flex page (flexible size memory page)
  *
  * This does not leave any more general purpose registers that can be accessed from
  * inside the system call. So since we must use 2 registers for passing the CS:IP,
- * it makes sense to use ECX & EDX for this purpose. So it seems the SYSENTER/SYSEXIT
+ * it makes sense to use ECX & EDX for this purpose. So it seems the SYSENTER-SYSEXIT
  * mechanism (which is the fastest way to make a system call in x86 32-bit mode) is
  * not compatible with the X.2 spec.
  *
@@ -55,20 +61,26 @@ typedef Word L4_Fpage; // flex page (flexible size memory page)
  * ESI: parameter 1
  * EDI: parameter 2
  * EBX: parameter 3
- * EBP: parameter 4
- * ESP: parameter 5
+ * ESP: parameter 4
+ * EBP: parameter 5
  *
+ * ESP and EBP are placed in a different order as well. This allows reading variables
+ * into ESP which are saved on the stack (relative to EBP) before EBP is clobbered.
  */
+
 #define SYSCALL(_reason, _ret, _p1, _p2) asm volatile (                 \
         "pushl %%ebp       \n"      /* save the base pointer for when we come back */  \
+        "movl %6, %%eax    \n"      /* store the reason code (system call index) in EAX */ \
+        "movl %1, %%esi    \n"      /* store the dest in ESI */                        \
         "movl %%esp, %%ecx \n"      /* save the stack pointer in ECX */                \
         "leal 1f, %%edx    \n"      /* save the instruction pointer in EDX */          \
         "sysenter          \n"      /* make the call */                                \
         "1:                \n"                                                         \
         "popl %%ebp        \n"      /* restore the base pointer, and we're done */     \
         : "=A" (_ret)                                                                  \
-        : "%eax" (_reason),            /* EAX = syscall reason */                         \
-          "b" (_p1)                /* ESI = param 1 */                                \
+        : "a" (_reason),            /* EAX = syscall reason */                         \
+          "rm" (_p1), \
+          "rm" (_p2) \
           : "%edx");
 #endif
 
@@ -79,10 +91,31 @@ typedef Word L4_Fpage; // flex page (flexible size memory page)
 /**
  * returns the base address of the KIP (kernel interface page) as mapped in the current address space
  */
-static inline void* L4_KernelInterface(register Word* ApiVersion, Word* ApiFlags, Word* KernelId) 
+static inline void* L4_KernelInterface(Word* ApiVersion, Word* ApiFlags, Word* KernelId) 
 {
    Word ret;
-   SYSCALL(SYSCALL_KERNEL_INTERFACE, ret, 0, 0);
+   asm volatile
+   (
+      "pushl %%ebp         \n"      /* save the base pointer for when we come back */  
+      "movl %4, %%eax      \n"      /* store the reason code (system call index) in EAX */
+      "movl %%esp, %%ecx   \n"      /* save the stack pointer in ECX */                
+      "leal 1f, %%edx      \n"      /* save the instruction pointer in EDX */          
+      "sysenter            \n"      /* make the call */
+      "1:                  \n"
+      //"movl %%esi, %1      \n"      /* output 1 in ESI */
+      //"movl %%edi, %2      \n"      /* output 2 in EDI */
+      //"movl %%ebx, %3      \n"      /* output 3 in EBX */
+      "popl %%ebp          \n"      /* restore the base pointer, and we're done */     
+      : /* output operands */ 
+        "=A" (ret),                       /* %0: ret <- EAX */
+        "=S" (ApiVersion),                /* %1: <- ESI */
+        "=D" (ApiFlags),                  /* %2: <- EDI */
+        "=b" (KernelId)                   /* %3: <- EBX */
+      : /* input operands */
+        "I" (SYSCALL_KERNEL_INTERFACE)    /* %4: reason code -> EAX */
+      : /* clobber list */
+         "%edx"
+   );
    return (void*)ret;
 }
 
@@ -107,10 +140,35 @@ L4_ThreadId L4_ExchangeRegisters(L4_ThreadId dest, Word control, Word sp, Word i
 /**
  * Create, modify or delete a thread
  */
-static inline Word L4_ThreadControl(L4_ThreadId dest, L4_ThreadId SpaceSpecifier, L4_ThreadId Scheduler, L4_ThreadId Pager, void* UtcbLocation)
+static inline Word L4_ThreadControl(L4_ThreadId dest, L4_ThreadId space, L4_ThreadId scheduler, L4_ThreadId pager, void* UtcbLocation)
 {
    Word ret;
-   //SYS_THREAD_CONTROL(SYSCALL_KERNEL_INTERFACE, ret, dest, 0);
+   asm volatile
+   (
+      "pushl %%ebp         \n"      /* save the base pointer for when we come back */  
+      "movl %6, %%eax      \n"      /* store the reason code (system call index) in EAX */
+      "movl %1, %%esi      \n"      /* store the dest in ESI */
+      "movl %2, %%edi      \n"      /* store the address space specifier in EDI */
+      "movl %3, %%ebx      \n"      /* store the scheduler specifier in EDI */
+      "movl %%esp, %%ecx   \n"      /* save the stack pointer in ECX */                
+      "movl %4, %%esp      \n"      /* store the pager in EBP */
+      "movl %5, %%ebp      \n"      /* store the UTCB location in ESP */
+      "leal 1f, %%edx      \n"      /* save the instruction pointer in EDX */          
+      "sysenter            \n"      /* make the call */
+      "1:                  \n"
+      "popl %%ebp          \n"      /* restore the base pointer, and we're done */     
+      : /* output operands */ 
+        "=A" (ret)
+      : /* input operands */
+        "m" (dest),                       /* %1: dest -> ESI */
+        "m" (space),                      /* %2: space -> EDI */
+        "m" (scheduler),                  /* %3: scheduler -> EBX */
+        "m" (pager),                      /* %4: pager -> ESP */
+        "m" (UtcbLocation),               /* %5: UtcbLocation -> EBP */
+        "I" (SYSCALL_KERNEL_INTERFACE)    /* %6: reason code -> EAX */
+      : /* clobber list */
+         "%edx"
+   );
    return ret;
 }
 
@@ -137,8 +195,22 @@ L4_MsgTag L4_SendLIPC(L4_ThreadId to, L4_ThreadId FromSpecifier, Word Timeouts, 
 inline void L4_DebugHalt(void);
 static inline void L4_DebugPutChar(char c)
 {
-   Word ret;
-   SYSCALL(SYSCALL_DEBUG_PUT_CHAR, ret, c, 0);
+   asm volatile
+   (
+      "pushl %%ebp         \n"      /* save the base pointer for when we come back */  
+      "movl %0, %%eax      \n"      /* store the reason code (system call index) in EAX */
+      "movl %%esp, %%ecx   \n"      /* save the stack pointer in ECX */                
+      "leal 1f, %%edx      \n"      /* save the instruction pointer in EDX */          
+      "sysenter            \n"      /* make the call */
+      "1:                  \n"
+      "popl %%ebp          \n"      /* restore the base pointer, and we're done */     
+      : /* output operands */ 
+      : /* input operands */
+        "aI" (SYSCALL_DEBUG_PUT_CHAR),    /* reason code -> EAX */
+        "S" (c)                           /* c -> ESI */
+      : /* clobber list */
+         "%edx"
+   );
 }
 
 #ifdef ARCH_IA32
