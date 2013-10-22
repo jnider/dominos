@@ -67,9 +67,10 @@ clean:
 .PHONY: tags cloc
 
 tags:
-	$(CTAGS) -f tags $(SRC_DIR)/* include/*
+	$(CTAGS) -R -f tags $(SRC_DIR)/* include/*
 
 cloc:
 	$(CLOC) $(SRC_DIR) include
 
--include $(C_SRC:.c=.P)
+# include any P (prerequisite files) but don't freak out if they don't exist
+-include $(C_SRC:%.c=objs/%.P)

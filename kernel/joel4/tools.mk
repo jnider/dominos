@@ -33,6 +33,10 @@ CFLAGS+=-nostdinc # don't include paths other than what I tell you
 CFLAGS+=-ffreestanding # ignore built-in functions, stdlib, etc
 CFLAGS+=-m32 # compile for 32-bit target
 
+ASMFLAGS=--32
+
+LDFLAGS=-melf_i386 # link in ELF format
+
 ifeq ($(DEBUG),y)
 CFLAGS+=-g # add debugging info
 CFLAGS+=-O0 # no optimizations
@@ -40,6 +44,3 @@ else
 CFLAGS+=-O1 # many optimizations
 endif
 
-ASMFLAGS=--32
-
-LDFLAGS=-melf_i386 # link in ELF format
