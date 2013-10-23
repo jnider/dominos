@@ -7,6 +7,7 @@
 /* If you update this enum, make sure you update the corresponding table in syscall.c */
 typedef enum L4_syscall
 {
+   SYSCALL_INVALID,
    SYSCALL_KERNEL_INTERFACE,
    SYSCALL_THREAD_CONTROL,
    SYSCALL_DEBUG_PUT_CHAR
@@ -255,6 +256,7 @@ static inline void L4_DebugPutChar(char c)
    asm volatile
    (
       "pushl %%ebp         \n"      /* save the base pointer for when we come back */  
+      "movl %0, %%eax      \n"
       "movl %%esp, %%ecx   \n"      /* save the stack pointer in ECX */                
       "leal 1f, %%edx      \n"      /* save the instruction pointer in EDX */          
       "sysenter            \n"      /* make the call */
@@ -262,7 +264,7 @@ static inline void L4_DebugPutChar(char c)
       "popl %%ebp          \n"      /* restore the base pointer, and we're done */     
       : /* output operands */ 
       : /* input operands */
-        "aI" (SYSCALL_DEBUG_PUT_CHAR),    /* reason code -> EAX */
+        "I" (SYSCALL_DEBUG_PUT_CHAR),     /* reason code -> EAX */
         "S" (c)                           /* c -> ESI */
       : /* clobber list */
          "%edx"
