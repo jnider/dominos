@@ -22,5 +22,5 @@ init.cpio: initfiles.txt boot.txt drivers
 clean:
 	make -C $(KERNEL_DIR) clean
 	make -C drivers clean
-	rm init.cpio
-	rm dominos.iso
+	@if [ -e init.cpio ] ; then rm init.cpio; fi
+	@if [ -e dominos.iso ] ; then rm dominos.iso; fi
