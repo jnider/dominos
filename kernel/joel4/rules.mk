@@ -22,6 +22,6 @@ objs/%.o: src/%.c
       sed -e 's/#.*//' -e 's/^[^:]*: *//' -e 's/ *\\$$//' \
           -e '/^$$/ d' -e 's/$$/ :/' < objs/$*.d >> objs/$(*F).P; \
       rm -f objs/$(*F).d
-	@$(CC) $(CFLAGS) $(INCLUDE_PATHS) -c $< -o $@
+	$(VERBOSE)$(CC) $(CFLAGS) $(INCLUDE_PATHS) -c $< -o $@
 
 MAKEDEPEND=$(CC) -M $(CFLAGS) $(INCLUDE_PATHS) -c $< -o objs/$(*F).d

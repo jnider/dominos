@@ -19,6 +19,7 @@ SRC_DIR=src
 OUTPUT_DIR=objs
 OUTPUT_NAME=joel4
 DEBUG?=n
+VERBOSE?=@
 OPTIONS?=n
 
 # if the OPTIONS option is set, print out all the variables in use
