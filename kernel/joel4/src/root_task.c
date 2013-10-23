@@ -15,8 +15,8 @@
 
 #define DEFAULT_UTCB 0x801000
 
-typedef uint32 cpio_handle;
-typedef uint32 file_handle;
+typedef Word cpio_handle;
+typedef Word file_handle;
 
 static void* cpioArchive;
 static Word threadId=2;
@@ -94,9 +94,7 @@ static void printf (const char *format, ...)
    while ((c = *format++) != 0)
    {
       if (c != '%')
-      {
          L4_DebugPutChar(c);
-      }
       else
       {
          char *p;
@@ -105,9 +103,7 @@ static void printf (const char *format, ...)
 
          // get rid of leading numbers in formatting
          while (c >= '0' && c <='9')
-         {
             c = *format++;
-         }
 
          switch (c)
          {
@@ -115,7 +111,7 @@ static void printf (const char *format, ...)
          case 'i':
          case 'u':
          case 'x':
-            itoa (buf, c, *((int *) arg++));
+            itoa (buf, c, *((int*)arg++));
             p = buf;
             goto string;
             break;
@@ -158,9 +154,9 @@ static int atoh(const char* str)
    return acc;
 }
 
-static void memcpy(void* dest, void* src, uint32 size)
+static void memcpy(void* dest, void* src, Word size)
 {
-   uint32 i;
+   Word i;
    for (i=0; i < size; i++)
       *(char*)dest++ = *(char*)src++;
 }
@@ -185,14 +181,14 @@ static cpio_handle cpio_open_archive(void* buffer)
    return INVALID_HANDLE;
 }
 
-static char* cpio_open_file(cpio_handle h, const char* filename, uint32* filesize)
+static char* cpio_open_file(cpio_handle h, const char* filename, Word* filesize)
 {
    cpio_newc_header* pFileHdr=(cpio_newc_header*)cpioArchive;
 
    while (pFileHdr)
    {
       char temp[MAX_FILENAME+1];
-      uint32 filenamesize;
+      Word filenamesize;
 
       memcpy(temp, pFileHdr->c_namesize, 8); // name size is always 8 chars (ASCII)
       temp[8] = 0;
@@ -214,7 +210,7 @@ static char* cpio_open_file(cpio_handle h, const char* filename, uint32* filesiz
       temp[filenamesize] = 0;
 
       // filename is padded with 0's to a multiple of 2
-      char* buffer = (char*)(((uint32)pFileHdr + sizeof(cpio_newc_header) + filenamesize + 3) & 0xFFFFFFFC);
+      char* buffer = (char*)(((Word)pFileHdr + sizeof(cpio_newc_header) + filenamesize + 3) & 0xFFFFFFFC);
 
       // compare it
       if (strcmp(filename, temp) == 0)
@@ -242,7 +238,7 @@ static L4_ThreadId GetFreeThreadId(void)
    return threadId++;
 }
 
-static int LoadProgram(const char* name, const char* buffer, uint32 size)
+static int LoadProgram(const char* name, const char* buffer, Word size)
 {
    Word rc;
    L4_ThreadId newThread;
@@ -257,26 +253,53 @@ static int LoadProgram(const char* name, const char* buffer, uint32 size)
    return 0;
 }
 
-void root_task_main(BootInfo info)
+void root_task_main(void)
 {
    char progFilename[MAX_FILENAME+1];
+   char temp[20];
    char* archBuffer;
    char* progBuffer;
-   uint32 archFilesize; // size of the archive file
-   uint32 progFilesize; // size of the program file
+   BootInfo* pInfo;
+   Word archFilesize; // size of the archive file
+   Word progFilesize; // size of the program file
 
-   Word ApiVersion;
-   Word ApiFlags;
-   Word KernelId;
+   Word apiVersion;
+   Word apiFlags;
+   Word kernelId;
 
-   L4_KIP* pKip = L4_KernelInterface(&ApiVersion, &ApiFlags, &KernelId);
+   L4_KIP* pKip = L4_KernelInterface(&apiVersion, &apiFlags, &kernelId);
    printf("%c%c%c%c\n", pKip->magic[0], pKip->magic[1], pKip->magic[2], pKip->magic[3]);
+   pInfo = (BootInfo*)pKip->bootInfo;
+
+   while(1);
+   printf("Boot info @ %x\n", pInfo);
+   printf("API Version: 0x%x\n", apiVersion);
+   printf("API Flags: 0x%x\n", apiFlags);
+   printf("Kernel ID: 0x%x\n", kernelId);
+
+   if (pInfo->magic != BOOT_INFO_MAGIC)
+   {
+      k_printf("Boot info magic wrong!\n");
+      while(1);
+   }
+   while(1);
+
+   GenericBootRecord* pRec = (GenericBootRecord*)pInfo->first;
+   if (pRec->type != BOOT_RECORD_TYPE_SIMPLE_MODULE)
+   {
+      k_printf("Boot record type is wrong %i\n", pRec->type);
+      while(1);
+   }
+
+   SimpleModule* pMod = (SimpleModule*)pInfo->first;
+
+   // first, some boot responsibilities
+   printf("init image @ 0x%x size: %i\n", pMod->start, pMod->size);
+
+   // map the module into user space
 
    /*
-   // first, some boot responsibilities
-   printf("init image @ 0x%x size: %i\n", info.initData, info.initDataSize);
-
-   cpio_handle archive = cpio_open_archive((void*)info.initData);
+   cpio_handle archive = cpio_open_archive((void*)pInfo->initData);
    if (archive == INVALID_HANDLE)
    {
       printf("Init module is in an unknown file format - expected CPIO newc format\n");
