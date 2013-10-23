@@ -254,13 +254,56 @@ void _main(unsigned long magic, multiboot_info_t *pInfo)
       HALT();
    }
 
-   /* Create KIP */
-   k_KIP = (unsigned int)k_allocKernelPage();
+   /* Create kernel information page */
+   k_KIP = (L4_KIP*)k_allocKernelPage();
    k_printf("Creating KIP @ 0x%x\n", k_KIP);
    k_KIP->magic[0] = 'L';
    k_KIP->magic[1] = '4';
    k_KIP->magic[2] = 230;
    k_KIP->magic[3] = 'K';
+  	BootInfo* pBootInfo = (BootInfo*)((char*)k_KIP + sizeof(L4_KIP)); // this will have to move when the KIP is complete- there are other detached pieces that will sit between the KIP proper and the boot info
+   k_KIP->bootInfo = (Word)pBootInfo;
+	k_printf("boot info @ 0x%x\n", pBootInfo);
+   pBootInfo->magic = BOOT_INFO_MAGIC;
+   pBootInfo->version = 1;
+   pBootInfo->first = (char*)pBootInfo + sizeof(BootInfo);
+   pBootInfo->count = 0;
+   pBootInfo->size = sizeof(BootInfo);
+
+   /* calculate how much free space remains in the KIP */
+   Word kipFreeSpace = PAGE_SIZE - sizeof(L4_KIP) - sizeof(BootInfo);
+   k_printf("%i bytes remaining in KIP\n", kipFreeSpace);
+   if ((pInfo->flags & MULTIBOOT_MODULES) && (pInfo->mods_count > 0))
+   {
+      module_t *mod = (module_t*)pInfo->mods_addr;
+
+      // make sure the module will fit in the remaining space
+      if (sizeof(SimpleExecutable) > kipFreeSpace)
+      {
+         k_printf("Not enough room left in KIP to describe boot module\n");
+         while(1);
+      }
+
+      /* root task
+      SimpleExecutable* pExe = (SimpleExecutable*)((char*)pBootInfo + sizeof(BootInfo));
+      pExe->codePStart = (unsigned int)&_root_task_code_start;
+      pExe->codeSize = (unsigned int)&_root_task_code_size;
+      pExe->dataPStart = (unsigned int)&_root_task_data_start;
+      pExe->dataSize = (unsigned int)&_root_task_data_size;
+      pExe->entry = root_task_main;
+      */
+
+      /* initrd module */
+      SimpleModule* pMod = (SimpleModule*)pBootInfo->first;
+      pMod->header.type = BOOT_RECORD_TYPE_SIMPLE_MODULE;
+      pMod->header.version = 1;
+      pMod->header.next = 0;
+      pMod->start = mod->mod_start;
+      pMod->size = mod->mod_end - mod->mod_start;
+      pMod->cmdlineOffset = 0;
+      pBootInfo->count++;
+      pBootInfo->size += sizeof(SimpleModule);
+   }
 
    /* initialize task management */
    k_initTask(SEGMENT_INDEX(USER_CODE_SEGMENT, 0, PRIVILEGE_LEVEL_USER),
@@ -287,6 +330,7 @@ void _main(unsigned long magic, multiboot_info_t *pInfo)
 	// turn off interrupts for root task only
 	rootTask->segment.eflags &= ~EFLAGS_IF;
 
+   /*
    // copy the init module into the root task
    if ((pInfo->flags & MULTIBOOT_MODULES) && (pInfo->mods_count > 0))
    {
@@ -310,15 +354,8 @@ void _main(unsigned long magic, multiboot_info_t *pInfo)
 			k_printf("copying from: 0x%x to 0x%x size: %i\n", ((void*)mod->mod_start) + i, newpage, PAGE_SIZE);
 			k_memcpy(newpage, ((void*)mod->mod_start) + i, modSize);
 		}
-
-   	/* save some information for the boot task on it's stack (as a parameter) */
-		//rootTask->segment.esp -= sizeof(BootInfo) + 4; //adjust the stack so as to leave room for the parameter
-   	//BootInfo* pBootInfo = (BootInfo*)(0x706000 - sizeof(BootInfo)); //0x705ff0
-		//k_printf("boot info @ 0x%x\n", pBootInfo);
-   	//pBootInfo->initData = APP_DATA + (unsigned int)&_root_task_data_size; // set the pointer to the virtual address for the data part + the offset
-		//pBootInfo->initDataSize = modSize;
-		//pBootInfo->freeMem = pInfo->mem_upper;
    }
+   */
 
    // now start user space, effectively running the first task (root task) 
 	// interrupts are enabled inside user-space tasks automatically (tss)

@@ -21,11 +21,85 @@ typedef Word L4_MsgTag;
 typedef Word L4_GrantItem[2];
 typedef Word L4_Fpage; // flex page (flexible size memory page)
 
-/* KIP structure */
-typedef __attribute__((packed)) struct L4_KIP
+/* KIP structures */
+typedef struct __attribute__((packed)) L4_KIPProcess
 {
-   char magic[4];    // must be L4µK
+   Word sp;    // stack pointer
+   Word ip;    // instruction poitner
+   Word low;   // ?
+   Word high;  // ?
+} L4_KIPProcess;
+
+typedef struct __attribute__((packed)) L4_KIP
+{
+   char magic[4];             // 0x00: magic number: must be L4µK
+   Word apiVersion;
+   Word apiFlags;
+   Word kernDescPtr;
+   Word kdebugInit;           // 0x10: kernel debugger
+   Word kdebugEntry;
+   Word kdebugLow;
+   Word kdebugHi;
+   L4_KIPProcess sigma0;      // 0x20: Sigma 0 process
+   L4_KIPProcess sigma1;      // 0x30: Sigma 1 process
+   L4_KIPProcess root;        // 0x40: Root process
+   Word padding0;             // 0x50:
+   Word memoryInfo;
+   Word kdebugConfig0;
+   Word kdebugConfig1;
+   Word padding1[0x40];       // 0x60: padding
+   Word padding2[2];          // 0xA0:
+   Word utcbInfo;
+   Word kipAreaInfo;
+   Word padding3[2];          // 0xB0:
+   Word bootInfo;
+   Word procDescPtr;
 } L4_KIP;
+
+typedef struct BootInfo
+{
+   Word magic;          // 0x00: magic number must be 14B0021D
+   Word version;        // version of the header (currently v1)
+   Word size;           // complete size of boot info struct including header and all records
+   Word first;          // pointer to the first boot record
+   Word count;          // number of boot records
+} BootInfo;
+
+typedef struct GenericBootRecord
+{
+   Word type;           // the actual type of boot record
+   Word version;        // header version
+   Word next;           // pointer to the next boot record
+} GenericBootRecord;
+
+typedef struct SimpleModule
+{
+   GenericBootRecord header;
+   Word start;
+   Word size;
+   Word cmdlineOffset;
+} SimpleModule;
+
+typedef struct SimpleExecutable
+{
+   GenericBootRecord header;
+   Word codePStart;     // physical address of code segment
+   Word codeVStart;     // virtual address of code segment
+   Word codeSize;       // size in bytes of code segment
+   Word dataPStart;     // physical address of data segment
+   Word dataVStart;     // virtual address of data segment
+   Word dataSize;       // size in bytes of data segment
+   Word bssPStart;
+   Word bssVStart;
+   Word bssSize;
+   Word entry;          // entry point
+   Word flags;          // flags
+   Word label;
+   Word cmdlineOffset;
+} SimpleExecutable;
+
+#define BOOT_INFO_MAGIC                   0x14B0021D
+#define BOOT_RECORD_TYPE_SIMPLE_MODULE    0x1
 
 #ifdef ARCH_IA32
 /* A note about register selection for passing parameters using the SYSENTER method:
@@ -61,28 +135,12 @@ typedef __attribute__((packed)) struct L4_KIP
  * ESI: parameter 1
  * EDI: parameter 2
  * EBX: parameter 3
- * ESP: parameter 4
- * EBP: parameter 5
+ * EBP: parameter 4
  *
- * ESP and EBP are placed in a different order as well. This allows reading variables
- * into ESP which are saved on the stack (relative to EBP) before EBP is clobbered.
+ * ESP cannot be used to pass a parameter since the stack is required on the receiver
+ * side, and would therefore corrupt the value in ESP.
  */
-
-#define SYSCALL(_reason, _ret, _p1, _p2) asm volatile (                 \
-        "pushl %%ebp       \n"      /* save the base pointer for when we come back */  \
-        "movl %6, %%eax    \n"      /* store the reason code (system call index) in EAX */ \
-        "movl %1, %%esi    \n"      /* store the dest in ESI */                        \
-        "movl %%esp, %%ecx \n"      /* save the stack pointer in ECX */                \
-        "leal 1f, %%edx    \n"      /* save the instruction pointer in EDX */          \
-        "sysenter          \n"      /* make the call */                                \
-        "1:                \n"                                                         \
-        "popl %%ebp        \n"      /* restore the base pointer, and we're done */     \
-        : "=A" (_ret)                                                                  \
-        : "a" (_reason),            /* EAX = syscall reason */                         \
-          "rm" (_p1), \
-          "rm" (_p2) \
-          : "%edx");
-#endif
+#endif // IA32
 
 /* constants */
 #define NILTHREAD    (L4_ThreadId)0
@@ -97,24 +155,23 @@ static inline void* L4_KernelInterface(Word* ApiVersion, Word* ApiFlags, Word* K
    asm volatile
    (
       "pushl %%ebp         \n"      /* save the base pointer for when we come back */  
-      "movl %4, %%eax      \n"      /* store the reason code (system call index) in EAX */
+      "movl %4, %%eax      \n"
       "movl %%esp, %%ecx   \n"      /* save the stack pointer in ECX */                
       "leal 1f, %%edx      \n"      /* save the instruction pointer in EDX */          
       "sysenter            \n"      /* make the call */
       "1:                  \n"
-      //"movl %%esi, %1      \n"      /* output 1 in ESI */
-      //"movl %%edi, %2      \n"      /* output 2 in EDI */
-      //"movl %%ebx, %3      \n"      /* output 3 in EBX */
+      "movl %%esi, %1      \n"
+      "movl %%edi, %2      \n"
+      "movl %%ebx, %3      \n"
       "popl %%ebp          \n"      /* restore the base pointer, and we're done */     
       : /* output operands */ 
         "=A" (ret),                       /* %0: ret <- EAX */
-        "=S" (ApiVersion),                /* %1: <- ESI */
-        "=D" (ApiFlags),                  /* %2: <- EDI */
-        "=b" (KernelId)                   /* %3: <- EBX */
+        "=m" (ApiVersion),                /* %1: <- ESI */
+        "=m" (ApiFlags),                  /* %2: <- EDI */
+        "=m" (KernelId)                   /* %3: <- EBX */
       : /* input operands */
         "I" (SYSCALL_KERNEL_INTERFACE)    /* %4: reason code -> EAX */
       : /* clobber list */
-         "%edx"
    );
    return (void*)ret;
 }
@@ -198,7 +255,6 @@ static inline void L4_DebugPutChar(char c)
    asm volatile
    (
       "pushl %%ebp         \n"      /* save the base pointer for when we come back */  
-      "movl %0, %%eax      \n"      /* store the reason code (system call index) in EAX */
       "movl %%esp, %%ecx   \n"      /* save the stack pointer in ECX */                
       "leal 1f, %%edx      \n"      /* save the instruction pointer in EDX */          
       "sysenter            \n"      /* make the call */
