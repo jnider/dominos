@@ -1,15 +1,6 @@
 #ifndef _ROOT_TASK__H
 #define _ROOT_TASK__H
 
-typedef unsigned int uint32;
-
-typedef struct BootInfo
-{
-	uint32 initData;
-	uint32 initDataSize;
-	uint32 freeMem;
-} BootInfo;
-
 struct header_old_cpio {
 		   unsigned short   c_magic;
 		   unsigned short   c_dev;
