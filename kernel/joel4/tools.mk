@@ -41,6 +41,6 @@ ifeq ($(DEBUG),y)
 CFLAGS+=-g # add debugging info
 CFLAGS+=-O0 # no optimizations
 else
-CFLAGS+=-O1 # many optimizations
+CFLAGS+=-O2 # many optimizations
 endif
 
