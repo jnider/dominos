@@ -1,3 +1,26 @@
+October 23, 2013
+A year later. What have I done? I decided to stick to the X.2v6 L4 API documentation.
+I started to implement the kernel API using the SYSENTER method on x86. It's progressing
+not badly. I have also implemented the KIP, and the corresponding system call. I am
+almost at the point that I can read an elf file and load it from user space. That is my
+current goal. Of course I have to fix many bugs along the way. The build system has been
+improved, but there are still some outstanding problems. For example, debug information
+is no longer being included in the kernel image. It is present in the individual .o
+files, which leads me to believe there is a problem with the linker script that is 
+throwing away all the debug info. I have tried to include it back explicitly, but no
+success so far. User-space printf is still problematic. It was working great for so long
+and then it started to act strangely yesterday. When I print a hex number it prints an
+unending string of '3's. No idea why '3' or why it never stops. I tried to use GDB +
+QEMU for debugging, and it was a ridiculously convoluted process. First, it was not
+clear how to connect gdb to qemu, which I eventually figured out (target remote command
+from inside gdb + gdbserver command from inside the qemu monitor) but then the gdb
+command set was completely non-intuitive (what else would you expect from GNU) and worse
+I couldn't even find some simple commands to do what I wanted (step into a function
+while single stepping, print the contents of a memory location, etc). I'm sure there is
+a way to do these things, but they are so basic, I don't understand why the commands are
+so hard to find. So it's back to BOCHS for now, which has given me better results for
+debugging.
+
 October 10, 2012
 Making progress on root task and boot task.  I had to implement memory allocation inside
 the kernel - borrowed from KOS.  I looked at the fiasco implementation, and their 'task'
