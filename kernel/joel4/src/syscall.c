@@ -2,8 +2,6 @@
 #include "task.h"
 #include "memory.h"
 
-typedef Word(syscall_handler_t)(Word p1, Word p2, Word p3, Word p4);
-
 static InvalidHandler(Word index)
 {
    k_printf("Invalid syscall index %i\n", index);
@@ -11,7 +9,7 @@ static InvalidHandler(Word index)
 }
 
 /* returns the address of the kernel interface page (KIP) */
-static inline Word KernelInterface(Word* apiVersion, Word* apiFlags, Word* kernelID)
+static Word KernelInterface(Word* apiVersion, Word* apiFlags, Word* kernelID)
 {
    k_printf("KernelInterface\n");
    *apiVersion = 0x1111111;
@@ -21,13 +19,13 @@ static inline Word KernelInterface(Word* apiVersion, Word* apiFlags, Word* kerne
 }
 
 /* create, modify or delete a thread */
-static inline Word ThreadControl(Word p1, Word p2, Word p3, Word p4)
+static Word ThreadControl(Word p1, Word p2, Word p3, Word p4)
 {
    k_printf("ThreadControl %i\n", p1);
    return 0;
 }
 
-static inline Word DebugPrintChar(Word p1, Word p2, Word p3, Word p4)
+static Word DebugPrintChar(Word p1, Word p2, Word p3, Word p4)
 {
    //k_printf("DebugPrintChar %i\n", p1);
    k_putchar((char)p1);
@@ -35,7 +33,7 @@ static inline Word DebugPrintChar(Word p1, Word p2, Word p3, Word p4)
    return 0;
 }
 
-static inline Word syscall_create_task_wrapper(Word p1, Word p2, Word p3, Word p4)
+static Word syscall_create_task_wrapper(Word p1, Word p2, Word p3, Word p4)
 {
    task_t* pTask = k_createTask();
    return pTask->taskID;
@@ -45,10 +43,10 @@ static inline Word syscall_create_task_wrapper(Word p1, Word p2, Word p3, Word p
    must match the L4_syscall enum, defined in l4.h. This table is used by the syscall mechanism, which has
    a small stub in assembly language. The stub pushes the parameters on the stack, and then jumps to the
    requested function as listed in the table (specified in the EAX register). */
-syscall_handler_t* syscall_handler_table[] =
+void* syscall_handler_table[] =
 {
    InvalidHandler,
-   (syscall_handler_t*)KernelInterface,
+   KernelInterface,
    ThreadControl,
    DebugPrintChar
 };
