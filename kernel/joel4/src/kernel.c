@@ -266,7 +266,7 @@ void _main(unsigned long magic, multiboot_info_t *pInfo)
 	k_printf("boot info @ 0x%x\n", pBootInfo);
    pBootInfo->magic = BOOT_INFO_MAGIC;
    pBootInfo->version = 1;
-   pBootInfo->first = (char*)pBootInfo + sizeof(BootInfo);
+   pBootInfo->first = (Word)((char*)pBootInfo + sizeof(BootInfo));
    pBootInfo->count = 0;
    pBootInfo->size = sizeof(BootInfo);
 
