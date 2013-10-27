@@ -251,22 +251,22 @@ L4_MsgTag L4_SendLIPC(L4_ThreadId to, L4_ThreadId FromSpecifier, Word Timeouts, 
 
 /* Debug */
 inline void L4_DebugHalt(void);
-static inline void L4_DebugPutChar(char c)
+static inline void L4_DebugPutChar(int c)
 {
    asm volatile
    (
-      "pushl %%ebp         \n"      /* save the base pointer for when we come back */  
       "movl %0, %%eax      \n"
       "movl %%esp, %%ecx   \n"      /* save the stack pointer in ECX */                
       "leal 1f, %%edx      \n"      /* save the instruction pointer in EDX */          
       "sysenter            \n"      /* make the call */
       "1:                  \n"
-      "popl %%ebp          \n"      /* restore the base pointer, and we're done */     
       : /* output operands */ 
       : /* input operands */
         "I" (SYSCALL_DEBUG_PUT_CHAR),     /* reason code -> EAX */
         "S" (c)                           /* c -> ESI */
       : /* clobber list */
+         "%eax",
+         "%ecx",
          "%edx"
    );
 }
