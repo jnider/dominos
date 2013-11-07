@@ -262,7 +262,7 @@ void _main(unsigned long magic, multiboot_info_t *pInfo)
    k_KIP->magic[2] = 230;
    k_KIP->magic[3] = 'K';
   	BootInfo* pBootInfo = (BootInfo*)((char*)k_KIP + sizeof(L4_KIP)); // this will have to move when the KIP is complete- there are other detached pieces that will sit between the KIP proper and the boot info
-   k_KIP->bootInfo = (Word)pBootInfo;
+   k_KIP->bootInfo = (Word)((char*)pBootInfo - (char*)k_KIP);
 	k_printf("boot info @ 0x%x\n", pBootInfo);
    pBootInfo->magic = BOOT_INFO_MAGIC;
    pBootInfo->version = 1;
