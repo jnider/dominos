@@ -1,3 +1,26 @@
+December 1, 2013
+Gernot Heiser came to visit us a couple of weeks ago, so I had the chance to ask him
+some good questions. First, I had some wrong impressions about the seL4 kernel. I
+originally understood that it was minimized to the point of trivial usefulness for the
+purpose of easing the verification effort. Gernot has explained that this is not the
+case, and in fact the seL4 kernel is a production-quality kernel and the interface is
+quite usable. I will have to find the examples of how to use it, and compare it again
+the the X.2v6 API that I recently selected. It is possible that I will return to seL4
+once I understand better how to use it (or possibly some hybrid). Another interesting
+point that he made was that parameters don't need to be passed in registers when
+performing IPC. He said that the performance gains were minimal (as opposed to leaving
+the parameters in the stack) and complicated the code more than necessary. I am now
+revisiting my kernel calls to simplify them a bit. I still have a question about if
+this is secure. In a call such as getKIP() which passes a pointer, how can the kernel
+determine if the address of the pointer is valid? Could a user modify the pointer
+such as to trick the kernel into returning a value into a chosen location? I hope not.
+
+October 27, 2013
+Thanks to some Russian hacker site, I have discovered how to build Bochs 2.6.2. It
+wouldn't link because of the pthread library. The solution is to configure like this:
+./configure LDFLAGS=-pthread --enable-debugger
+The answer was here: http://www.linux.org.ru/forum/development/7934916
+
 October 23, 2013
 A year later. What have I done? I decided to stick to the X.2v6 L4 API documentation.
 I started to implement the kernel API using the SYSENTER method on x86. It's progressing
