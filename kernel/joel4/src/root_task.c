@@ -263,23 +263,25 @@ void root_task_main(void)
    Word archFilesize; // size of the archive file
    Word progFilesize; // size of the program file
 
-   Word apiVersion;
-   Word apiFlags;
-   Word kernelId;
+   Word apiVersion=0x10101010;
+   Word apiFlags=0x20202020;
+   Word kernelId=0x30303030;
 
+   printf("&apiVersion: 0x%x\n", &apiVersion);
+   printf("apiVersion: 0x%x\n", apiVersion);
    L4_KIP* pKip = L4_KernelInterface(&apiVersion, &apiFlags, &kernelId);
+   printf("pKip @ %x\n", pKip);
    printf("%c%c%c%c\n", pKip->magic[0], pKip->magic[1], pKip->magic[2], pKip->magic[3]);
-   pInfo = (BootInfo*)pKip->bootInfo;
+   pInfo = (BootInfo*)(pKip->bootInfo + (Word)pKip);
 
-   while(1);
    printf("Boot info @ %x\n", pInfo);
    printf("API Version: 0x%x\n", apiVersion);
-   printf("API Flags: 0x%x\n", apiFlags);
-   printf("Kernel ID: 0x%x\n", kernelId);
+   //printf("API Flags: 0x%x\n", apiFlags);
+   //printf("Kernel ID: 0x%x\n", kernelId);
 
    if (pInfo->magic != BOOT_INFO_MAGIC)
    {
-      k_printf("Boot info magic wrong!\n");
+      printf("Boot info magic wrong!\n");
       while(1);
    }
    while(1);
@@ -287,7 +289,7 @@ void root_task_main(void)
    GenericBootRecord* pRec = (GenericBootRecord*)pInfo->first;
    if (pRec->type != BOOT_RECORD_TYPE_SIMPLE_MODULE)
    {
-      k_printf("Boot record type is wrong %i\n", pRec->type);
+      printf("Boot record type is wrong %i\n", pRec->type);
       while(1);
    }
 

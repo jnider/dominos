@@ -2,6 +2,37 @@
 #include "task.h"
 #include "memory.h"
 
+/*******************************************************************
+ * The userspace stub functions
+ *******************************************************************/
+void* L4_KernelInterface(Word* ApiVersion, Word* ApiFlags, Word* KernelId) 
+{
+   register Word ret asm("%eax");
+   asm volatile
+   (
+      "movl %1, %%eax      \n"
+      "movl %%esp, %%ecx   \n"      /* save the stack pointer in ECX */                
+      "leal 1f, %%edx      \n"      /* save the instruction pointer in EDX */          
+      "leal %2, %%ebx      \n"      /* save address of first parameter in EBX */
+      "sysenter            \n"      /* make the call */
+      "1:                  \n"
+      : /* output operands */ 
+        "=A" (ret)                       /* %0: ret <- EAX */
+      : /* input operands */
+        "I" (SYSCALL_KERNEL_INTERFACE),  /* %1: reason code -> EAX */
+         "m" (ApiVersion)
+      : /* clobber list */
+         "%ebx",
+         "%ecx",
+         "%edx"
+   );
+   return (void*)ret;
+}
+
+
+/*******************************************************************
+ * The kernelspace handlers
+ *******************************************************************/
 static InvalidHandler(Word index)
 {
    k_printf("Invalid syscall index %i\n", index);
@@ -9,12 +40,19 @@ static InvalidHandler(Word index)
 }
 
 /* returns the address of the kernel interface page (KIP) */
-static Word KernelInterface(Word* apiVersion, Word* apiFlags, Word* kernelID)
+static Word KernelInterface(Word* stackPtr)
 {
-   k_printf("KernelInterface\n");
+   Word* apiVersion = *(stackPtr);
+   Word* apiFlags = *(stackPtr+1);
+   Word* kernelID = *(stackPtr+2);
+   k_printf("user stack: 0x%x\n", stackPtr);
+   k_printf("&apiVersion: 0x%x\n", apiVersion);
+   k_printf("*apiVersion: 0x%x\n", *apiVersion);
    *apiVersion = 0x1111111;
-   *apiFlags = 0x2222222;
-   *kernelID = 0x3333333;
+   k_printf("*apiVersion: 0x%x\n", *apiVersion);
+   //*apiFlags = 0x2222222;
+   //*kernelID = 0x3333333;
+
    return KERNEL_INTERFACE_PAGE;
 }
 
@@ -25,9 +63,9 @@ static Word ThreadControl(Word p1, Word p2, Word p3, Word p4)
    return 0;
 }
 
-static Word DebugPrintChar(Word p1, Word p2, Word p3, Word p4)
+static inline Word DebugPrintChar(Word* stackPtr)
 {
-   //k_printf("DebugPrintChar %i\n", p1);
+   Word p1 = *(stackPtr);
    k_putchar((char)p1);
    serial_putc((char)p1);
    return 0;

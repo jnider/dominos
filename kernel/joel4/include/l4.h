@@ -150,32 +150,7 @@ typedef struct SimpleExecutable
 /**
  * returns the base address of the KIP (kernel interface page) as mapped in the current address space
  */
-static inline void* L4_KernelInterface(Word* ApiVersion, Word* ApiFlags, Word* KernelId) 
-{
-   Word ret;
-   asm volatile
-   (
-      "pushl %%ebp         \n"      /* save the base pointer for when we come back */  
-      "movl %4, %%eax      \n"
-      "movl %%esp, %%ecx   \n"      /* save the stack pointer in ECX */                
-      "leal 1f, %%edx      \n"      /* save the instruction pointer in EDX */          
-      "sysenter            \n"      /* make the call */
-      "1:                  \n"
-      "movl %%esi, %1      \n"
-      "movl %%edi, %2      \n"
-      "movl %%ebx, %3      \n"
-      "popl %%ebp          \n"      /* restore the base pointer, and we're done */     
-      : /* output operands */ 
-        "=A" (ret),                       /* %0: ret <- EAX */
-        "=m" (ApiVersion),                /* %1: <- ESI */
-        "=m" (ApiFlags),                  /* %2: <- EDI */
-        "=m" (KernelId)                   /* %3: <- EBX */
-      : /* input operands */
-        "I" (SYSCALL_KERNEL_INTERFACE)    /* %4: reason code -> EAX */
-      : /* clobber list */
-   );
-   return (void*)ret;
-}
+void* L4_KernelInterface(Word* ApiVersion, Word* ApiFlags, Word* KernelId);
 
 /* Registers (memory, buffer) */
 void L4_StoreMR(int i, Word* w); ///< write a memory register
@@ -258,14 +233,16 @@ static inline void L4_DebugPutChar(int c)
       "movl %0, %%eax      \n"
       "movl %%esp, %%ecx   \n"      /* save the stack pointer in ECX */                
       "leal 1f, %%edx      \n"      /* save the instruction pointer in EDX */          
+      "leal %1, %%ebx      \n"      /* save address of first parameter in EBX */
       "sysenter            \n"      /* make the call */
       "1:                  \n"
       : /* output operands */ 
       : /* input operands */
         "I" (SYSCALL_DEBUG_PUT_CHAR),     /* reason code -> EAX */
-        "S" (c)                           /* c -> ESI */
+        "m" (c)
       : /* clobber list */
          "%eax",
+         "%ebx",
          "%ecx",
          "%edx"
    );
