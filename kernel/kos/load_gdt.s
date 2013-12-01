@@ -7,7 +7,7 @@
 
 _gdt_flush:
     lgdt _gp          # Load the GDT with our '_gp' which is a special pointer
-    mov 0x10, %ax     # 0x10 is the offset in the GDT to our data segment
+    mov $0x10, %ax     # 0x10 is the offset in the GDT to our data segment
     mov %ax, %ds
     mov %ax, %es
     mov %ax, %fs
