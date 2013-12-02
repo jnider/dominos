@@ -8,6 +8,7 @@
 export KERNEL_DIR=kernel/joel4
 TOP=`pwd`
 
+# default target - build it all
 # 'make all' or just 'make' will build this target
 all: tools kernel drivers init.cpio
 	./makeiso.sh grub2
