@@ -257,10 +257,10 @@ void _main(unsigned long magic, multiboot_info_t *pInfo)
    /* Create kernel information page */
    k_KIP = (L4_KIP*)k_allocKernelPage();
    k_printf("Creating KIP @ 0x%x\n", k_KIP);
-   k_KIP->magic[0] = 'L';
-   k_KIP->magic[1] = '4';
-   k_KIP->magic[2] = 230;
-   k_KIP->magic[3] = 'K';
+   k_KIP->magic[0] = KIP_MAGIC_0;
+   k_KIP->magic[1] = KIP_MAGIC_1;
+   k_KIP->magic[2] = KIP_MAGIC_2;
+   k_KIP->magic[3] = KIP_MAGIC_3;
   	BootInfo* pBootInfo = (BootInfo*)((char*)k_KIP + sizeof(L4_KIP)); // this will have to move when the KIP is complete- there are other detached pieces that will sit between the KIP proper and the boot info
    k_KIP->bootInfo = (Word)((char*)pBootInfo - (char*)k_KIP);
 	k_printf("boot info @ 0x%x\n", pBootInfo);

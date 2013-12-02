@@ -263,21 +263,26 @@ void root_task_main(void)
    Word archFilesize; // size of the archive file
    Word progFilesize; // size of the program file
 
-   Word apiVersion=0x10101010;
-   Word apiFlags=0x20202020;
-   Word kernelId=0x30303030;
+   Word apiVersion;
+   Word apiFlags;
+   Word kernelId;
 
-   printf("&apiVersion: 0x%x\n", &apiVersion);
-   printf("apiVersion: 0x%x\n", apiVersion);
    L4_KIP* pKip = L4_KernelInterface(&apiVersion, &apiFlags, &kernelId);
-   printf("pKip @ %x\n", pKip);
-   printf("%c%c%c%c\n", pKip->magic[0], pKip->magic[1], pKip->magic[2], pKip->magic[3]);
+   if (L4_ValidateKIPMagic(pKip) != 0)
+   {
+      printf("KIP magic number is incorrect: %c%c%c%c\n", pKip->magic[0], pKip->magic[1], pKip->magic[2], pKip->magic[3]);
+      while(1);
+   }
    pInfo = (BootInfo*)(pKip->bootInfo + (Word)pKip);
 
    printf("Boot info @ %x\n", pInfo);
-   printf("API Version: 0x%x\n", apiVersion);
-   //printf("API Flags: 0x%x\n", apiFlags);
-   //printf("Kernel ID: 0x%x\n", kernelId);
+   if (L4_GET_API_VERSION(apiVersion) != L4_API_VERSION_X2)
+   {
+      printf("Unknown API Version: 0x%x\n", apiVersion);
+      while(1);
+   }
+   printf("API Flags: 0x%x\n", apiFlags);
+   printf("Kernel ID: 0x%x\n", kernelId);
 
    if (pInfo->magic != BOOT_INFO_MAGIC)
    {

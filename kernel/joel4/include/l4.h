@@ -33,7 +33,7 @@ typedef struct __attribute__((packed)) L4_KIPProcess
 
 typedef struct __attribute__((packed)) L4_KIP
 {
-   char magic[4];             // 0x00: magic number: must be L4µK
+   char magic[4];             // 0x00: magic number: must be L4µK (see KIP_MAGIC_ below)
    Word apiVersion;
    Word apiFlags;
    Word kernDescPtr;
@@ -56,6 +56,27 @@ typedef struct __attribute__((packed)) L4_KIP
    Word bootInfo;
    Word procDescPtr;
 } L4_KIP;
+
+#define KIP_MAGIC_0     'L'
+#define KIP_MAGIC_1     '4'
+#define KIP_MAGIC_2     (230)
+#define KIP_MAGIC_3     'K'
+
+#define L4_API_VERSION_2               0x02  // Version 2
+#define L4_API_VERSION_X0              0x83  // Experimental Version X.0 (subversion 0x80)
+#define L4_API_VERSION_X1              0x83  // Experimental Version X.1 (subversion 0x81)
+#define L4_API_VERSION_X2              0x84  // Experimental Version X.2
+#define L4_API_VERSION_DRESDEN_L4_SEC  0x85  // Dresden L4.Sec
+#define L4_API_VERSION_NICTA_N1        0x86  // NICTA N1 (Revision rev)
+#define L4_API_VERSION_4               0x04  // Version 4 (Revision rev)
+
+#define L4_GET_API_VERSION(_a) ((_a >> 24) & 0xFF)
+#define L4_GET_API_SUBVERSION(_a) ((_a >> 16) & 0xFF)
+#define L4_IS_EXPERIMENTAL(_a) (_a && 0x80000000)
+
+#define L4_KERNEL_ID_L4KA              0x04
+#define L4_KERNEL_ID_NICTA             0x05
+#define L4_KERNEL_ID_JOEL4             0x0A
 
 typedef struct BootInfo
 {
@@ -150,7 +171,8 @@ typedef struct SimpleExecutable
 /**
  * returns the base address of the KIP (kernel interface page) as mapped in the current address space
  */
-void* L4_KernelInterface(Word* ApiVersion, Word* ApiFlags, Word* KernelId);
+L4_KIP* L4_KernelInterface(Word* ApiVersion, Word* ApiFlags, Word* KernelId);
+int L4_ValidateKIPMagic(const L4_KIP* pKip);
 
 /* Registers (memory, buffer) */
 void L4_StoreMR(int i, Word* w); ///< write a memory register
