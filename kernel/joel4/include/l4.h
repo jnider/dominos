@@ -226,27 +226,7 @@ L4_MsgTag L4_SendLIPC(L4_ThreadId to, L4_ThreadId FromSpecifier, Word Timeouts, 
 
 /* Debug */
 inline void L4_DebugHalt(void);
-static inline void L4_DebugPutChar(int c)
-{
-   asm volatile
-   (
-      "movl %0, %%eax      \n"
-      "movl %%esp, %%ecx   \n"      /* save the stack pointer in ECX */                
-      "leal 1f, %%edx      \n"      /* save the instruction pointer in EDX */          
-      "leal %1, %%ebx      \n"      /* save address of first parameter in EBX */
-      "sysenter            \n"      /* make the call */
-      "1:                  \n"
-      : /* output operands */ 
-      : /* input operands */
-        "I" (SYSCALL_DEBUG_PUT_CHAR),     /* reason code -> EAX */
-        "m" (c)
-      : /* clobber list */
-         "%eax",
-         "%ebx",
-         "%ecx",
-         "%edx"
-   );
-}
+void L4_DebugPutChar(int c);
 
 #ifdef ARCH_IA32
 #endif
