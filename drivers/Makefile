@@ -8,7 +8,6 @@ include tools.mk
 include rules.mk
 include files.mk
 
-INCLUDE_PATHS=-Iinclude
 CONFIG?=release
 SRC_DIR=src
 
@@ -22,7 +21,7 @@ all: output_dir $(DRIVER_TARGETS)
 define PROGRAM_template
 $(DRIVERS).driver: objs/crt0.o $$($(1).driver)
 	@echo building $$@
-	$(LD) $(LDFLAGS) $$^ -T user.ld -o $$@
+	$(LD) $(LDFLAGS) $$^ -T user.ld ../kernel/joel4/joel4.lib -o $$@
 
 $(1).driver: $(call $(1).OBJS)
 endef
