@@ -5,56 +5,6 @@
 typedef Word(*syscall_handler)(Word* stackPtr);
 
 /*******************************************************************
- * The userspace stub functions
- *******************************************************************/
-L4_KIP* L4_KernelInterface(Word* ApiVersion, Word* ApiFlags, Word* KernelId) 
-{
-   register Word ret asm("%eax");
-   asm volatile
-   (
-      "movl %1, %%eax      \n"
-      "movl %%esp, %%ecx   \n"      /* save the stack pointer in ECX */                
-      "leal 1f, %%edx      \n"      /* save the instruction pointer in EDX */          
-      "leal %2, %%ebx      \n"      /* save address of first parameter in EBX */
-      "sysenter            \n"      /* make the call */
-      "1:                  \n"
-      : /* output operands */ 
-        "=A" (ret)                       /* %0: ret <- EAX */
-      : /* input operands */
-        "I" (SYSCALL_KERNEL_INTERFACE),  /* %1: reason code -> EAX */
-         "m" (ApiVersion)
-      : /* clobber list */
-         "%ebx",
-         "%ecx",
-         "%edx"
-   );
-   return (L4_KIP*)ret;
-}
-
-void L4_DebugPutChar(int c)
-{
-   asm volatile
-   (
-      "movl %0, %%eax      \n"
-      "movl %%esp, %%ecx   \n"      /* save the stack pointer in ECX */                
-      "leal 1f, %%edx      \n"      /* save the instruction pointer in EDX */          
-      "leal %1, %%ebx      \n"      /* save address of first parameter in EBX */
-      "sysenter            \n"      /* make the call */
-      "1:                  \n"
-      : /* output operands */ 
-      : /* input operands */
-        "I" (SYSCALL_DEBUG_PUT_CHAR),     /* reason code -> EAX */
-        "m" (c)
-      : /* clobber list */
-         "%eax",
-         "%ebx",
-         "%ecx",
-         "%edx"
-   );
-}
-
-
-/*******************************************************************
  * The kernelspace handlers
  *******************************************************************/
 static Word InvalidHandler(Word* index)
@@ -80,8 +30,18 @@ static Word KernelInterface(Word* stackPtr)
 /* create, modify or delete a thread */
 static Word ThreadControl(Word* stackPtr)
 {
-   Word p1 = *(stackPtr);
-   k_printf("ThreadControl %i\n", p1);
+   L4_ThreadId dest = *(stackPtr);
+   L4_ThreadId space = *(stackPtr+1);
+   L4_ThreadId scheduler = *(stackPtr+2);
+   L4_ThreadId pager = *(stackPtr+3);
+   void* utcbLocation = (void*)*(stackPtr+4);
+   k_printf("ThreadControl dest:0x%x space: 0x%x scheduler: 0x%x pager: 0x%x utcb: 0x%x\n", dest, space, scheduler, pager, utcbLocation);
+
+   k_createThread(rootTask, &_root_task_code_start,
+                  (unsigned int)&_root_task_code_size,
+                  (void*)&_root_task_data_start,
+                  (unsigned int)&_root_task_data_size,
+                  (unsigned int)root_task_main);
    return 0;
 }
 

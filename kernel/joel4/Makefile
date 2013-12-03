@@ -7,7 +7,7 @@
 # build the kernel and update tags
 # this target must be defined before the other makefile fragments are included below
 # specifically 'tools.mk' defines the 'tools' rule which would become the default rule
-all: joel4.elf tags
+all: joel4.elf joel4.lib tags
 	@echo "Build complete"
 
 include tools.mk
@@ -53,6 +53,10 @@ debug:
 
 output_dir:
 	@if [ ! -d $(OUTPUT_DIR) ]; then echo "Creating output directory"; mkdir -p $(OUTPUT_DIR); fi
+
+%.lib: 
+	@echo "Creating joel4.lib"
+	ar -ru joel4.lib objs/l4.o
 
 version:
 	@echo "Incrementing kernel version"
