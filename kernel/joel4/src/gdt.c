@@ -110,23 +110,40 @@ int GDT_Load(unsigned short csIndex, unsigned short dsIndex)
    gp.pBase = gdt;
 
    __ASM("lgdtl %0\n" :: "m"(gp));
-   __ASM("mov %0, %%ax\n" :: "m"(dsIndex));
-   __ASM("mov %ax, %ds\n");
-   __ASM("mov %ax, %es\n");
-   __ASM("mov %ax, %fs\n");
-   __ASM("mov %ax, %gs\n");
+
+   __ASM
+   (
+      "mov %0, %%ax\n"
+      "mov %%ax, %%ds\n"
+      "mov %%ax, %%es\n"
+      "mov %%ax, %%fs\n"
+      "mov %%ax, %%gs\n"
+      : /* output operands */
+      : /* input operands */
+         "m"(dsIndex)
+      : /* clobber list */
+         "%eax"
+   );
 
    unsigned int task_sel[2];
    task_sel[0] = 0;
    task_sel[1] = csIndex;
 
    // jump to the new CS (EIP stays the same, we just get a new code segment)
-   __ASM("mov $gdt_label, %%ebx\n" 
-         "mov %0, %%esi\n"
-         "mov %%ebx, (%%esi)\n"
-         "ljmp *(%0)\n"
-         "gdt_label:\n"
-         :: "am"(task_sel));
+   __ASM
+   ( 
+      "mov $gdt_label, %%ebx  \n" 
+      "mov %0, %%esi          \n"
+      "mov %%ebx, (%%esi)     \n"
+      "ljmp *(%0)             \n"
+      "gdt_label:             \n"
+      : /* output operands */
+      : /* input operands */
+         "am"(task_sel)
+      : /* clobber list */
+         "%ebx",
+         "%esi"
+   );
    
    //GDT_Flush(csIndex);
 
