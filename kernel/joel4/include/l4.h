@@ -195,37 +195,7 @@ L4_ThreadId L4_ExchangeRegisters(L4_ThreadId dest, Word control, Word sp, Word i
 /**
  * Create, modify or delete a thread
  */
-static inline Word L4_ThreadControl(L4_ThreadId dest, L4_ThreadId space, L4_ThreadId scheduler, L4_ThreadId pager, void* UtcbLocation)
-{
-   Word ret;
-   asm volatile
-   (
-      "pushl %%ebp         \n"      /* save the base pointer for when we come back */  
-      "movl %6, %%eax      \n"      /* store the reason code (system call index) in EAX */
-      "movl %1, %%esi      \n"      /* store the dest in ESI */
-      "movl %2, %%edi      \n"      /* store the address space specifier in EDI */
-      "movl %3, %%ebx      \n"      /* store the scheduler specifier in EDI */
-      "movl %%esp, %%ecx   \n"      /* save the stack pointer in ECX */                
-      "movl %4, %%esp      \n"      /* store the pager in EBP */
-      "movl %5, %%ebp      \n"      /* store the UTCB location in ESP */
-      "leal 1f, %%edx      \n"      /* save the instruction pointer in EDX */          
-      "sysenter            \n"      /* make the call */
-      "1:                  \n"
-      "popl %%ebp          \n"      /* restore the base pointer, and we're done */     
-      : /* output operands */ 
-        "=A" (ret)
-      : /* input operands */
-        "m" (dest),                       /* %1: dest -> ESI */
-        "m" (space),                      /* %2: space -> EDI */
-        "m" (scheduler),                  /* %3: scheduler -> EBX */
-        "m" (pager),                      /* %4: pager -> ESP */
-        "m" (UtcbLocation),               /* %5: UtcbLocation -> EBP */
-        "I" (SYSCALL_KERNEL_INTERFACE)    /* %6: reason code -> EAX */
-      : /* clobber list */
-         "%edx"
-   );
-   return ret;
-}
+Word L4_ThreadControl(L4_ThreadId dest, L4_ThreadId space, L4_ThreadId scheduler, L4_ThreadId pager, void* UtcbLocation);
 
 void L4_ThreadSwitch(L4_ThreadId dest); ///< switch to the specified thread
 
@@ -234,7 +204,12 @@ L4_Clock L4_SystemClock(void); ///< get the system clock tick
 
 /* Memory */
 void L4_Unmap (Word control);
-//Word SpaceControl (ThreadId SpaceSpecifier,Word control, Fpage KernelInterfacePageArea, UtcbArea, ThreadId Redirector, Word& old Control);
+
+/**
+ * Creates or modifies the address space that the specified thread belongs to
+ */
+Word L4_SpaceControl(L4_ThreadId SpaceSpecifier, Word control, L4_Fpage KernelInterfacePageArea, Word* UtcbArea, L4_ThreadId Redirector, Word* oldControl);
+
 //MapItem MapItem (Fpage f, Word SndBase);
 //Bool IsMapItem (MapItem m); ///< Delivers true if map item is valid otherwise delivers false
 //L4_GrantItem L4_Grant(L4_Fpage f, Word SndBase);
