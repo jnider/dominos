@@ -13,6 +13,7 @@
 #include "root_task.h"
 
 #define LOAD_TASK_REGISTER(_index)  __ASM("ltr %0\n" :: "am"(_index))
+#define ALIGN(_addr, _align) (((Word)_addr + _align - 1) - (((Word)_addr + _align - 1) % _align))
 
 /* defines for global descriptor table (GDT) entries */
 #define NULL_SEGMENT        0             /* not actually used, but must be 0 */
@@ -254,25 +255,28 @@ void _main(unsigned long magic, multiboot_info_t *pInfo)
       HALT();
    }
 
-   /* Create kernel information page */
+   /* Create kernel information page, boot info struct, and boot modules */
    k_KIP = (L4_KIP*)k_allocKernelPage();
    k_printf("Creating KIP @ 0x%x\n", k_KIP);
+   BootInfo* pBootInfo = (BootInfo*)ALIGN(((char*)k_KIP + sizeof(L4_KIP)), 4);
+
    k_KIP->magic[0] = KIP_MAGIC_0;
    k_KIP->magic[1] = KIP_MAGIC_1;
    k_KIP->magic[2] = KIP_MAGIC_2;
    k_KIP->magic[3] = KIP_MAGIC_3;
-  	BootInfo* pBootInfo = (BootInfo*)((char*)k_KIP + sizeof(L4_KIP)); // this will have to move when the KIP is complete- there are other detached pieces that will sit between the KIP proper and the boot info
    k_KIP->bootInfo = (Word)((char*)pBootInfo - (char*)k_KIP);
-	k_printf("boot info @ 0x%x\n", pBootInfo);
+
+   /* Fill in the boot info struct */
    pBootInfo->magic = BOOT_INFO_MAGIC;
    pBootInfo->version = 1;
-   pBootInfo->first = (Word)((char*)pBootInfo + sizeof(BootInfo));
+   pBootInfo->first = (Word)((char*)pBootInfo - (char*)k_KIP + sizeof(BootInfo)); // relative to the start of the BootInfo struct
    pBootInfo->count = 0;
    pBootInfo->size = sizeof(BootInfo);
 
    /* calculate how much free space remains in the KIP */
-   Word kipFreeSpace = PAGE_SIZE - sizeof(L4_KIP) - sizeof(BootInfo);
+   Word kipFreeSpace = PAGE_SIZE - ((Word)pBootInfo - (Word)k_KIP) + sizeof(BootInfo);
    k_printf("%i bytes remaining in KIP\n", kipFreeSpace);
+
    if ((pInfo->flags & MULTIBOOT_MODULES) && (pInfo->mods_count > 0))
    {
       module_t *mod = (module_t*)pInfo->mods_addr;
@@ -284,17 +288,8 @@ void _main(unsigned long magic, multiboot_info_t *pInfo)
          while(1);
       }
 
-      /* root task
-      SimpleExecutable* pExe = (SimpleExecutable*)((char*)pBootInfo + sizeof(BootInfo));
-      pExe->codePStart = (unsigned int)&_root_task_code_start;
-      pExe->codeSize = (unsigned int)&_root_task_code_size;
-      pExe->dataPStart = (unsigned int)&_root_task_data_start;
-      pExe->dataSize = (unsigned int)&_root_task_data_size;
-      pExe->entry = root_task_main;
-      */
-
       /* initrd module */
-      SimpleModule* pMod = (SimpleModule*)pBootInfo->first;
+      SimpleModule* pMod = (SimpleModule*)(pBootInfo->first + (char*)k_KIP);
       pMod->header.type = BOOT_RECORD_TYPE_SIMPLE_MODULE;
       pMod->header.version = 1;
       pMod->header.next = 0;
