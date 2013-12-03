@@ -166,7 +166,6 @@ static cpio_handle cpio_open_archive(void* buffer)
 {
    // read image & determine type
    char *magic = ((cpio_newc_header*)buffer)->c_magic;
-   printf("%x %x %x %x %x %x\n", magic[0], magic[1], magic[2], magic[3], magic[4], magic[5]);
 
    // if type is known, return handle
    if (magic[0] == '0' &&
@@ -289,24 +288,18 @@ void root_task_main(void)
       printf("Boot info magic wrong!\n");
       while(1);
    }
-   while(1);
 
-   GenericBootRecord* pRec = (GenericBootRecord*)pInfo->first;
+   GenericBootRecord* pRec = (GenericBootRecord*)(pInfo->first + (Word)pKip);
    if (pRec->type != BOOT_RECORD_TYPE_SIMPLE_MODULE)
    {
       printf("Boot record type is wrong %i\n", pRec->type);
       while(1);
    }
 
-   SimpleModule* pMod = (SimpleModule*)pInfo->first;
+   SimpleModule* pMod = (SimpleModule*)pRec;
 
    // first, some boot responsibilities
-   printf("init image @ 0x%x size: %i\n", pMod->start, pMod->size);
-
-   // map the module into user space
-
-   /*
-   cpio_handle archive = cpio_open_archive((void*)pInfo->initData);
+   cpio_handle archive = cpio_open_archive((void*)pMod->start);
    if (archive == INVALID_HANDLE)
    {
       printf("Init module is in an unknown file format - expected CPIO newc format\n");
@@ -324,6 +317,7 @@ void root_task_main(void)
       printf("Cannot find 'boot.txt' in the init module - don't know how to boot!\n");
       while(1);
    }
+   printf("archFilesize: %i bytes\n", archFilesize);
 
    // run through the list of all modules and load them one by one
    char* src = archBuffer; 
@@ -365,7 +359,6 @@ void root_task_main(void)
       src++;
    }
    // enable the scheduler
-   */
 
    printf("Complete\n");
 
