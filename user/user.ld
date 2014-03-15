@@ -17,7 +17,7 @@ SECTIONS {
       . = ALIGN(0x1000);
    } : user_code
 
-	/* stack is 0x1100000 */
+	/* stack is 0x1100000-0x1200000 */
 
 	/* data is 0x1200000 */
    .user_data 0x1200000 :

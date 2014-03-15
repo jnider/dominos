@@ -1,5 +1,6 @@
 *.bin
 joel4.elf
+.gdbinit
 *.o
 *.swp
 *.ncb
@@ -7,6 +8,7 @@ joel4.elf
 *.img
 *.iso
 *.user
+*.vim
 obj/*
 init.cpio
 tags*

@@ -254,7 +254,7 @@ void k_mapTable(unsigned int* pPageDir, unsigned int address)
       pTable[i] = MEMORY_PAGE_USER_MODE | MEMORY_PAGE_GLOBAL | MEMORY_PAGE_WRITE;
 
    pPageDir[dirIndex] = GET_DISK_LOCATION((unsigned int)pTable) | MEMORY_PAGE_TABLE_PRESENT |
-      MEMORY_PAGE_TABLE_WRITE | MEMORY_PAGE_TABLE_GLOBAL;
+      MEMORY_PAGE_TABLE_WRITE | MEMORY_PAGE_TABLE_GLOBAL | MEMORY_PAGE_TABLE_USER_MODE;
 }
 
 __inline void k_map4MPage(unsigned int* pPageDir, unsigned int physical, unsigned int logical, unsigned int flags)

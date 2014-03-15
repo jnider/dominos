@@ -355,7 +355,7 @@ void _main(unsigned long magic, multiboot_info_t *pInfo)
 
    task_t* pRootTask = k_createThread(rootTaskPD,
                   entry,
-                  APP_STACK + APP_STACK_SIZE,
+                  APP_DATA,
                   APP_STACK_SIZE);
 
    //k_setPageDirectory(k_getKernelPageDirectory());
