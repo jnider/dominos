@@ -20,7 +20,7 @@ C_SRC = kernel.c \
          malloc.c \
          cpu.c    \
          task.c   \
-         root_task.c \
+         cpio.c   \
          l4.c
 
 ifeq ($(strip $(INTEL)), y)

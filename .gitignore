@@ -10,3 +10,8 @@ joel4.elf
 obj/*
 init.cpio
 tags*
+iso-temp/
+kernel/joel4/joel4.lib
+kernel/joel4/joel4.s
+kernel/joel4/joel4.sym
+kernel/joel4/objs/

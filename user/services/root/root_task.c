@@ -252,7 +252,7 @@ static int LoadProgram(const char* name, const char* buffer, Word size)
    return 0;
 }
 
-void root_task_main(void)
+void main(void)
 {
    char progFilename[MAX_FILENAME+1];
    char temp[20];

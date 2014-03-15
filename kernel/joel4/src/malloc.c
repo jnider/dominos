@@ -33,7 +33,7 @@ void k_initHeap(int address, int size)
    memList.pFirst->size = size - sizeof(mem_node_t);
    memList.pFirst->next = 0;
 
-   k_printf("initHeap address: 0x%x size %i\n", address, size);
+   k_printf("initHeap address: 0x%x size 0x%x\n", address, size);
 
    /* map it for use by kmalloc */
    memList.pLast = memList.pFirst;

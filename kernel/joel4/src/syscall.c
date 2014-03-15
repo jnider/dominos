@@ -37,11 +37,13 @@ static Word ThreadControl(Word* stackPtr)
    void* utcbLocation = (void*)*(stackPtr+4);
    k_printf("ThreadControl dest:0x%x space: 0x%x scheduler: 0x%x pager: 0x%x utcb: 0x%x\n", dest, space, scheduler, pager, utcbLocation);
 
+   /*
    k_createThread(rootTask, &_root_task_code_start,
                   (unsigned int)&_root_task_code_size,
                   (void*)&_root_task_data_start,
                   (unsigned int)&_root_task_data_size,
                   (unsigned int)root_task_main);
+   */
    return 0;
 }
 
