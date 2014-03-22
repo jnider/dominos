@@ -17,7 +17,7 @@ all: output_dir $(SERVICE_TARGETS)
 	@echo "Build complete"
 
 define PROGRAM_template
-$(SERVICES).service: ../objs/crt0.o $$($(1).service)
+$(1).service: ../objs/crt0.o $$($(1).service)
 	@echo building $$@
 	$(LD) $(LDFLAGS) $$^ -T ../user.ld ../../kernel/joel4/joel4.lib -o $$@
 
