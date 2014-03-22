@@ -1,2 +1,3 @@
 boot.txt
-drivers/pcie.driver
+user/services/root.service
+user/drivers/pcie.driver

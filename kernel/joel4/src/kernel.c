@@ -10,9 +10,10 @@
 #include "cpu.h"
 #include "version.h"
 #include "eflags.h"	// for turning off interrupts in root task - should be cpu specific
-#include "root_task.h"
+#include "cpio.h"
 
 #define LOAD_TASK_REGISTER(_index)  __ASM("ltr %0\n" :: "am"(_index))
+#define ALIGN(_addr, _align) (((Word)_addr + _align - 1) - (((Word)_addr + _align - 1) % _align))
 
 /* defines for global descriptor table (GDT) entries */
 #define NULL_SEGMENT        0             /* not actually used, but must be 0 */
@@ -44,12 +45,7 @@ int kernel_data_segment = KERNEL_DATA_SEGMENT;
 extern int _endKernel; /* provided by the linker script to mark the end of the loadable portions of the kernel */
 extern unsigned int _kernelStack;
 
-extern void root_task_main(void);
 extern void syscall(void);
-extern int _root_task_code_start;
-extern int _root_task_code_size;
-extern int _root_task_data_start;
-extern int _root_task_data_size;
 extern int _interruptStack;
 
 static void print_multiboot(const multiboot_info_t *pInfo)
@@ -133,9 +129,7 @@ static void print_multiboot(const multiboot_info_t *pInfo)
 
 void _main(unsigned long magic, multiboot_info_t *pInfo)
 {
-   int freeHeap;
-   void* freePages;
-   task_t* rootTask;
+   int freeHeapSize; /* length of free kernel heap, in bytes */
 
 	// interrupts should be off by default, but make sure anyway
    _DISABLE_INTERRUPTS();
@@ -153,11 +147,26 @@ void _main(unsigned long magic, multiboot_info_t *pInfo)
       k_printf("Not a multiboot bootloader\n");
       while(1);
    }
-   print_multiboot(pInfo);
+   //print_multiboot(pInfo);
+   
+
+   // calculate the end of memory used by the modules
+   if (pInfo->flags & MULTIBOOT_MODULES)
+   {
+      module_t *mod;
+      unsigned int i;
+
+      for (i = 0, mod = (module_t *) pInfo->mods_addr; i < pInfo->mods_count; i++, mod++)
+      {
+         _endKernel = (mod->mod_end + PAGE_SIZE) & ~(PAGE_SIZE_MASK-1);
+         k_printf("_endKernel = 0x%x\n", _endKernel);
+      }
+   }
+   k_printf("end of memory: 0x%x\n", pInfo->mem_upper * 1024);
 
    /* find out who we are dealing with */
    k_getCpuInfo(&cpuInfo);
-   k_printCpuInfo(&cpuInfo);
+   //k_printCpuInfo(&cpuInfo);
    
    if (k_strcmp(cpuInfo.intel.vendorStr, "GenuineIntel"))
    {
@@ -222,20 +231,15 @@ void _main(unsigned long magic, multiboot_info_t *pInfo)
    unsigned short ostss_index = SEGMENT_INDEX(KERNEL_TSS_SEGMENT, 0, PRIVILEGE_LEVEL_KERNEL);
    LOAD_TASK_REGISTER(ostss_index);
 
-   /* calculate free space, and set up heap */
-   freePages = (void*)KERNEL_MEMORY_LIMIT - FREE_PAGE_COUNT * PAGE_SIZE;
-   freeHeap = freePages - (void*)&_endKernel;
-   k_initHeap((int)&_endKernel, freeHeap);
-   k_printf("Freemem: %i\n", k_freeMem());
-
    /* initialize memory, and enable paging */
    k_printf("Initializing memory\n");
+   freeHeapSize = KERNEL_MEMORY_LIMIT - _endKernel - RESERVED_PAGE_COUNT * PAGE_SIZE;
    
    // check for page size extensions (4MB pages)
    if (cpuInfo.intel.features & INTEL_FEATURES_PSE)
    {
       k_printf("4MB memory pages supported\n");
-      k_initMemory(freePages);
+      k_initMemory((void*)(_endKernel + freeHeapSize), KERNEL_MEMORY_LIMIT, USER_MEMORY_START, pInfo->mem_upper * 1024);
    }
    else
    {
@@ -243,66 +247,23 @@ void _main(unsigned long magic, multiboot_info_t *pInfo)
       HALT();
    }
 
+   /* set up heap */
+   k_initHeap(_endKernel, freeHeapSize);
+   k_printf("Freemem: %i\n", k_freeMem());
+   k_printf("Reserved pages: %i\n", RESERVED_PAGE_COUNT);
+
+
    if ((cpuInfo.intel.features & INTEL_FEATURES_MSR) && 
       (cpuInfo.intel.features & INTEL_FEATURES_SEP))
    {
-      k_initSystemCalls(SEGMENT_INDEX(KERNEL_CODE_SEGMENT, 0, PRIVILEGE_LEVEL_KERNEL), (unsigned int)&_kernelStack, (unsigned int)syscall);
+      k_initSystemCalls(SEGMENT_INDEX(KERNEL_CODE_SEGMENT, 0, PRIVILEGE_LEVEL_KERNEL),
+         (unsigned int)&_kernelStack,
+         (unsigned int)syscall);
    }
    else
    {
       k_printf("Can't initialize SYSENTER/SYSEXIT\n");
       HALT();
-   }
-
-   /* Create kernel information page */
-   k_KIP = (L4_KIP*)k_allocKernelPage();
-   k_printf("Creating KIP @ 0x%x\n", k_KIP);
-   k_KIP->magic[0] = 'L';
-   k_KIP->magic[1] = '4';
-   k_KIP->magic[2] = 230;
-   k_KIP->magic[3] = 'K';
-  	BootInfo* pBootInfo = (BootInfo*)((char*)k_KIP + sizeof(L4_KIP)); // this will have to move when the KIP is complete- there are other detached pieces that will sit between the KIP proper and the boot info
-   k_KIP->bootInfo = (Word)((char*)pBootInfo - (char*)k_KIP);
-	k_printf("boot info @ 0x%x\n", pBootInfo);
-   pBootInfo->magic = BOOT_INFO_MAGIC;
-   pBootInfo->version = 1;
-   pBootInfo->first = (Word)((char*)pBootInfo + sizeof(BootInfo));
-   pBootInfo->count = 0;
-   pBootInfo->size = sizeof(BootInfo);
-
-   /* calculate how much free space remains in the KIP */
-   Word kipFreeSpace = PAGE_SIZE - sizeof(L4_KIP) - sizeof(BootInfo);
-   k_printf("%i bytes remaining in KIP\n", kipFreeSpace);
-   if ((pInfo->flags & MULTIBOOT_MODULES) && (pInfo->mods_count > 0))
-   {
-      module_t *mod = (module_t*)pInfo->mods_addr;
-
-      // make sure the module will fit in the remaining space
-      if (sizeof(SimpleExecutable) > kipFreeSpace)
-      {
-         k_printf("Not enough room left in KIP to describe boot module\n");
-         while(1);
-      }
-
-      /* root task
-      SimpleExecutable* pExe = (SimpleExecutable*)((char*)pBootInfo + sizeof(BootInfo));
-      pExe->codePStart = (unsigned int)&_root_task_code_start;
-      pExe->codeSize = (unsigned int)&_root_task_code_size;
-      pExe->dataPStart = (unsigned int)&_root_task_data_start;
-      pExe->dataSize = (unsigned int)&_root_task_data_size;
-      pExe->entry = root_task_main;
-      */
-
-      /* initrd module */
-      SimpleModule* pMod = (SimpleModule*)pBootInfo->first;
-      pMod->header.type = BOOT_RECORD_TYPE_SIMPLE_MODULE;
-      pMod->header.version = 1;
-      pMod->header.next = 0;
-      pMod->start = mod->mod_start;
-      pMod->size = mod->mod_end - mod->mod_start;
-      pMod->cmdlineOffset = 0;
-      pBootInfo->count++;
-      pBootInfo->size += sizeof(SimpleModule);
    }
 
    /* initialize task management */
@@ -311,57 +272,103 @@ void _main(unsigned long magic, multiboot_info_t *pInfo)
       SEGMENT_INDEX(KERNEL_DATA_SEGMENT, 0, PRIVILEGE_LEVEL_KERNEL),
       (unsigned int)&_interruptStack);
 
+   k_printf("kernel memory limit: 0x%x\n", KERNEL_MEMORY_LIMIT);    /* how much memory is associated with the kernel */
+   k_printf("user memory start: 0x%x\n", USER_MEMORY_START);
+
+   /* Create kernel information page, boot info struct, and boot modules */
+   k_KIP = (L4_KIP*)k_allocKernelPage(); /* if this causes problems, use k_allocKernel4KPage() instead */
+   k_printf("Creating KIP @ 0x%x\n", k_KIP);
+   BootInfo* pBootInfo = (BootInfo*)ALIGN(((char*)k_KIP + sizeof(L4_KIP)), 4);
+
+   k_KIP->magic[0] = KIP_MAGIC_0;
+   k_KIP->magic[1] = KIP_MAGIC_1;
+   k_KIP->magic[2] = KIP_MAGIC_2;
+   k_KIP->magic[3] = KIP_MAGIC_3;
+   k_KIP->bootInfo = (Word)((char*)pBootInfo - (char*)k_KIP);
+
+   /* Fill in the boot info struct */
+   pBootInfo->magic = BOOT_INFO_MAGIC;
+   pBootInfo->version = 1;
+   pBootInfo->first = (Word)((char*)pBootInfo - (char*)k_KIP + sizeof(BootInfo)); // relative to the start of the BootInfo struct
+   pBootInfo->count = 0;
+   pBootInfo->size = sizeof(BootInfo);
+
+   /* calculate how much free space remains in the KIP */
+   Word kipFreeSpace = PAGE_SIZE - ((Word)pBootInfo - (Word)k_KIP) + sizeof(BootInfo);
+   k_printf("%i bytes remaining in KIP\n", kipFreeSpace);
+
+   char* archBuffer;
+   if (!(pInfo->flags & MULTIBOOT_MODULES) || (pInfo->mods_count == 0))
+   {
+      k_printf("No boot loader modules found - can't find initrd\n");
+   }
+
+   Word archFilesize; // size of the archive file
+   module_t *mod = (module_t*)pInfo->mods_addr;
+
+   // make sure the module will fit in the remaining space
+   if (sizeof(SimpleExecutable) > kipFreeSpace)
+   {
+      k_printf("Not enough room left in KIP to describe boot module\n");
+      while(1);
+   }
+
+   /* initrd module */
+   SimpleModule* pMod = (SimpleModule*)(pBootInfo->first + (char*)k_KIP);
+   pMod->header.type = BOOT_RECORD_TYPE_SIMPLE_MODULE;
+   pMod->header.version = 1;
+   pMod->header.next = 0;
+   pMod->start = mod->mod_start;
+   pMod->size = mod->mod_end - mod->mod_start;
+   pMod->cmdlineOffset = 0;
+   pBootInfo->count++;
+   pBootInfo->size += sizeof(SimpleModule);
+
+   k_printf("Looking for root task\n");
+   if (cpio_open_archive((void*)pMod->start) == -1)
+   {
+      k_printf("Init module is in an unknown file format - expected CPIO newc format\n");
+      while(1);
+   }
+      
+   // find the file containing the list of modules
+   archBuffer = (char*)cpio_open_file(pMod->start, "user/services/root.service", &archFilesize);
+   if (!archBuffer)
+   {
+      k_printf("Cannot find 'root.service' in the init module - don't know how to boot!\n");
+      while(1);
+   }
+   k_printf("archFilesize: %i bytes\n", archFilesize);
+
    /* create root task - takes over responsibility from the kernel for all resources
       until a driver wants some of those responsibilities */
    k_printf("Creating root task\n");
-   rootTask = k_createTask();
-	if (!rootTask)
-	{
-		k_printf("Failed\n");
-		HALT();
-	}
 
-   k_createThread(rootTask, &_root_task_code_start,
-                  (unsigned int)&_root_task_code_size,
-                  (void*)&_root_task_data_start,
-                  (unsigned int)&_root_task_data_size,
-                  (unsigned int)root_task_main);
+   // create a unique address space for this new task
+   unsigned int rootTaskPD = k_createMemorySpace();
+   k_printf("Root task's page directory is at address 0x%x\n", rootTaskPD);
+
+   k_setPageDirectory(rootTaskPD);
+
+   int entry;
+   k_loadELF(rootTaskPD, archBuffer, &entry);
+
+   task_t* pRootTask = k_createThread(rootTaskPD,
+                  entry,
+                  APP_DATA,
+                  APP_STACK_SIZE);
+
+   //k_setPageDirectory(k_getKernelPageDirectory());
 
 	// turn off interrupts for root task only
-	rootTask->segment.eflags &= ~EFLAGS_IF;
-
-   /*
-   // copy the init module into the root task
-   if ((pInfo->flags & MULTIBOOT_MODULES) && (pInfo->mods_count > 0))
-   {
-		uint32 i;
-      module_t *mod = (module_t*)pInfo->mods_addr;
-
-		// determine how many more pages need to be mapped
-		uint32 freeSpace = (unsigned int)&_root_task_data_size % PAGE_SIZE;
-		uint32 modSize = mod->mod_end - mod->mod_start;
-   	k_printf("free space: %i needed space %i\n", freeSpace, modSize);
-
-		// map the needed pages
-		uint32 numMappedPages = (uint32)&_root_task_data_size / PAGE_SIZE;
-		for (i=0; i < modSize; i+= PAGE_SIZE)
-		{
-			void* newpage = k_allocKernelPage();
-      	k_map4KPage((unsigned int*)rootTask->segment.pdbr, (unsigned int)newpage, (unsigned int)APP_DATA + (numMappedPages * PAGE_SIZE) + i,
-         	MEMORY_PAGE_WRITE | MEMORY_PAGE_USER_MODE);
-			
-			// now copy the data to the user-accessible space
-			k_printf("copying from: 0x%x to 0x%x size: %i\n", ((void*)mod->mod_start) + i, newpage, PAGE_SIZE);
-			k_memcpy(newpage, ((void*)mod->mod_start) + i, modSize);
-		}
-   }
-   */
+	pRootTask->segment.eflags &= ~EFLAGS_IF;
 
    // now start user space, effectively running the first task (root task) 
 	// interrupts are enabled inside user-space tasks automatically (tss)
-   k_memcpy(&userTSS, &rootTask->segment, sizeof(tss_t));
-   k_printf("switching to root task (PDBR=0x%x)\n", userTSS.pdbr);
-   k_dumpPageDirectory((unsigned int*)userTSS.pdbr);
+   k_memcpy(&userTSS, &pRootTask->segment, sizeof(tss_t));
+   k_printf("Switching to root task (PDBR=0x%x)\n", userTSS.pdbr);
+   k_setPageDirectory(userTSS.pdbr);
+   //k_dumpPageDirectory((unsigned int*)userTSS.pdbr);
    unsigned int task_sel[2];
    task_sel[0] = 0;
    task_sel[1] = SEGMENT_INDEX(USER_TSS_SEGMENT, 0, PRIVILEGE_LEVEL_USER);

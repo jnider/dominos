@@ -16,6 +16,7 @@ CFLAGS+=-nostdinc # don't include paths other than what I tell you
 CFLAGS+=-ffreestanding # ignore built-in functions, stdlib, etc
 CFLAGS+=-g #add debugging info
 CFLAGS+=-m32 #compile for 32-bit target
+CFLAGS+=-Iinclude -I../../kernel/joel4/include
 
 ASMFLAGS= --32
 

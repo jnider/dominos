@@ -1,9 +1,7 @@
 #include "l4.h"
-#include "root_task.h"
+#include "cpio.h"
 
-/* This is the root task.  It executes in user space even though it is
-   compiled as part of the kernel.  In fact, it is the first user space
-   task created as part of the kernel initialization.  The job of the root
+/* This is the root task. The job of the root
    task is 2-fold:
    1) boot the system by loading all the appropriate drivers from initrd
    2) allocate the system resources during steady state
@@ -166,7 +164,6 @@ static cpio_handle cpio_open_archive(void* buffer)
 {
    // read image & determine type
    char *magic = ((cpio_newc_header*)buffer)->c_magic;
-   printf("%x %x %x %x %x %x\n", magic[0], magic[1], magic[2], magic[3], magic[4], magic[5]);
 
    // if type is known, return handle
    if (magic[0] == '0' &&
@@ -253,7 +250,7 @@ static int LoadProgram(const char* name, const char* buffer, Word size)
    return 0;
 }
 
-void root_task_main(void)
+void main(void)
 {
    char progFilename[MAX_FILENAME+1];
    char temp[20];
@@ -263,45 +260,44 @@ void root_task_main(void)
    Word archFilesize; // size of the archive file
    Word progFilesize; // size of the program file
 
-   Word apiVersion=0x10101010;
-   Word apiFlags=0x20202020;
-   Word kernelId=0x30303030;
+   Word apiVersion;
+   Word apiFlags;
+   Word kernelId;
 
-   printf("&apiVersion: 0x%x\n", &apiVersion);
-   printf("apiVersion: 0x%x\n", apiVersion);
    L4_KIP* pKip = L4_KernelInterface(&apiVersion, &apiFlags, &kernelId);
-   printf("pKip @ %x\n", pKip);
-   printf("%c%c%c%c\n", pKip->magic[0], pKip->magic[1], pKip->magic[2], pKip->magic[3]);
+   if (L4_ValidateKIPMagic(pKip) != 0)
+   {
+      printf("KIP magic number is incorrect: %c%c%c%c\n", pKip->magic[0], pKip->magic[1], pKip->magic[2], pKip->magic[3]);
+      while(1);
+   }
    pInfo = (BootInfo*)(pKip->bootInfo + (Word)pKip);
 
    printf("Boot info @ %x\n", pInfo);
-   printf("API Version: 0x%x\n", apiVersion);
-   //printf("API Flags: 0x%x\n", apiFlags);
-   //printf("Kernel ID: 0x%x\n", kernelId);
+   if (L4_GET_API_VERSION(apiVersion) != L4_API_VERSION_X2)
+   {
+      printf("Unknown API Version: 0x%x\n", apiVersion);
+      while(1);
+   }
+   printf("API Flags: 0x%x\n", apiFlags);
+   printf("Kernel ID: 0x%x\n", kernelId);
 
    if (pInfo->magic != BOOT_INFO_MAGIC)
    {
       printf("Boot info magic wrong!\n");
       while(1);
    }
-   while(1);
 
-   GenericBootRecord* pRec = (GenericBootRecord*)pInfo->first;
+   GenericBootRecord* pRec = (GenericBootRecord*)(pInfo->first + (Word)pKip);
    if (pRec->type != BOOT_RECORD_TYPE_SIMPLE_MODULE)
    {
       printf("Boot record type is wrong %i\n", pRec->type);
       while(1);
    }
 
-   SimpleModule* pMod = (SimpleModule*)pInfo->first;
+   SimpleModule* pMod = (SimpleModule*)pRec;
 
    // first, some boot responsibilities
-   printf("init image @ 0x%x size: %i\n", pMod->start, pMod->size);
-
-   // map the module into user space
-
-   /*
-   cpio_handle archive = cpio_open_archive((void*)pInfo->initData);
+   cpio_handle archive = cpio_open_archive((void*)pMod->start);
    if (archive == INVALID_HANDLE)
    {
       printf("Init module is in an unknown file format - expected CPIO newc format\n");
@@ -319,6 +315,7 @@ void root_task_main(void)
       printf("Cannot find 'boot.txt' in the init module - don't know how to boot!\n");
       while(1);
    }
+   printf("archFilesize: %i bytes\n", archFilesize);
 
    // run through the list of all modules and load them one by one
    char* src = archBuffer; 
@@ -360,7 +357,6 @@ void root_task_main(void)
       src++;
    }
    // enable the scheduler
-   */
 
    printf("Complete\n");
 

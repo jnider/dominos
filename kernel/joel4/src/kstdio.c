@@ -436,6 +436,26 @@ int isspace(char c)
    return c==' ';
 }
 
+int k_atoh(const char* str)
+{
+   int acc = 0;
+   while (*str)
+   {
+      acc <<= 4;
+      if (*str >= '0' && *str <= '9')
+         acc += (*str) - '0';
+      else if (*str >= 'A' && *str <= 'F')
+         acc += (*str) - 'A' + 10;
+      else if (*str >= 'a' && *str <= 'f')
+         acc += (*str) - 'a' + 10;
+      else
+         return 0;
+      
+      str++;
+   }
+   return acc;
+}
+
 int k_atoi(const char* s)
 {
    int rc = 0;

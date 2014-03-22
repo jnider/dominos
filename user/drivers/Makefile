@@ -4,11 +4,10 @@
 #
 # jnider 17-05-2013
 
-include tools.mk
-include rules.mk
+include ../tools.mk
+include ../rules.mk
 include files.mk
 
-INCLUDE_PATHS=-Iinclude
 CONFIG?=release
 SRC_DIR=src
 
@@ -20,9 +19,9 @@ all: output_dir $(DRIVER_TARGETS)
 	@echo "Build complete"
 
 define PROGRAM_template
-$(DRIVERS).driver: objs/crt0.o $$($(1).driver)
+$(DRIVERS).driver: $$($(1).driver)
 	@echo building $$@
-	$(LD) $(LDFLAGS) $$^ -T user.ld -o $$@
+	@$(LD) $(LDFLAGS) ../objs/crt0.o $$^ -T ../user.ld ../../kernel/joel4/joel4.lib -o $$@
 
 $(1).driver: $(call $(1).OBJS)
 endef
@@ -35,6 +34,7 @@ output_dir:
 
 clean:
 	rm -rf $(OUTPUT_DIR)
+	rm -f *.driver
 
 tags:
 	$(CTAGS) -f tags src/* include/*

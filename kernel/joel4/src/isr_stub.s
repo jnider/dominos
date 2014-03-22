@@ -313,21 +313,22 @@ isr_common_stub:
    iret
 
 syscall:
-   pushl %edx  # save the user mode instruction pointer
-   pushl %ecx  # save the user mode stack pointer
-   pushl %ebx  # address of first parameter of user's stack
+   pushl %edx                       # save the user mode instruction pointer
+   pushl %ecx                       # save the user mode stack pointer
    
    cmpl $3, %eax                    # make sure there is a valid handler for this index
    jle syscall_index_ok
+   movl %eax, %ebx                  # set the invalid code as the first parameter
    movl $0, %eax                    # if not, call the 'invalid' handler
 
 syscall_index_ok:
+   pushl %ebx                       # address of first parameter of user's stack
    mov $syscall_handler_table, %esi # move the address of the table into ESI
    movl (%esi, %eax, 4), %ebx       # calculate the offset of the function pointer
    call *%ebx                       # call it
    
    # restore parameters & clean up the stack
-   popl %ebx
+   addl $4, %esp
    popl %ecx # restore the user mode stack pointer
    popl %edx # restore the user mode instruction pointer
    sysexit
