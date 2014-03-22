@@ -13,6 +13,9 @@
 
 #define SEGMENT_INDEX(_index, _ldt, _priv)  (unsigned short)(((_index & 0x1F) << 3) | ((_ldt & 1) << 2) | (_priv & 0x3))   ///< makes a segment index
 
+#define MIN(_a, _b) (_a < _b ? _a : _b)
+#define MAX(_a, _b) (_a > _b ? _a : _b)
+
 typedef long unsigned int size_t; // JKN - leave this for the stdlib (pdclib)
 
 #ifdef __cplusplus
@@ -31,6 +34,7 @@ int k_strncmp(const char* s1, const char* s2, size_t n);
 int k_isspace(char c);
 char* k_strtok(char* s1, const char* s2);
 char* k_strdup(const char* s1);
+int k_atoh(const char* str);
 int k_atoi(const char* a);
 #define k_memmove k_memcpy
 

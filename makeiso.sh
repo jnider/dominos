@@ -17,7 +17,8 @@ mkdir -p $ISOROOT
 # put the files in the right locations
 echo "Copying files for image"
 cp kernel/joel4/joel4.elf $ISOROOT
-cp drivers/*.driver $ISOROOT
+cp user/drivers/*.driver $ISOROOT
+cp user/services/*.service $ISOROOT
 cp init.cpio $ISOROOT
 
 if [[ $loader == "grub" ]] ; then

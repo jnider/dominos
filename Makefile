@@ -1,6 +1,6 @@
 # The main makefile for Dominos
 #
-# Builds the kernel, drivers, and builds a boot image
+# Builds the kernel, userspace, and builds a boot image
 # You can build everything from here (or at least you will be able to)
 
 # Only the JOEL4 kernel is supported at this time
@@ -10,10 +10,10 @@ TOP=`pwd`
 
 # default target - build it all
 # 'make all' or just 'make' will build this target
-all: tools kernel drivers init.cpio
+all: tools kernel user init.cpio
 	./makeiso.sh grub2
 
-.PHONY: kernel drivers
+.PHONY: kernel user
 
 # set DEBUG to off by default
 DEBUG?=n
@@ -32,16 +32,16 @@ tools:
 kernel:
 	make -C $(KERNEL_DIR) DEBUG=$(DEBUG)
 
-# drivers are not part of the kernel - build them separately
-drivers:
-	make -C drivers
+# userspace is not part of the kernel - build it separately
+user:
+	make -C user
 
 # this is like linux's 'initrd' - needed for booting
-init.cpio: initfiles.txt boot.txt drivers
+init.cpio: initfiles.txt boot.txt user
 	cpio --format=newc -o < initfiles.txt > init.cpio
 
 clean:
 	make -C $(KERNEL_DIR) clean
-	make -C drivers clean
+	make -C user clean
 	@if [ -e init.cpio ] ; then rm init.cpio; fi
 	@if [ -e dominos.iso ] ; then rm dominos.iso; fi

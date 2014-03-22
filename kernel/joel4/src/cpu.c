@@ -67,6 +67,11 @@ void k_getCpuInfo(cpu_info* info)
       info->intel.cores = (processor >> 16) & 0xFF;
       info->intel.apicID = (processor >> 24) & 0xFF;
    }
+
+/*NX: execute disable.
+If CPUID.80000001H:EDX.NX [bit 20] = 1, IA32_EFER.NXE may be set to 1, allowing PAE paging and IA-32e
+paging to disable execute access to selected pages (see Section 4.6). (Processors that do not support CPUID
+function 80000001H do not allow IA32_EFER.NXE to be set to 1.)*/
 }
 
 void k_printCpuInfo(const cpu_info* info)

@@ -6,4 +6,8 @@
 
 # This includes redirecting the serial output of the VM to a text file
 
-qemu-system-i386 -cdrom dominos.iso -sdl -serial file:serial1.txt
+if [[ "$1" = "debug" ]]; then
+   DEBUG="-S -s -D qemu.log"
+fi
+
+qemu-system-i386 -cdrom dominos.iso -sdl -serial file:serial1.txt $DEBUG

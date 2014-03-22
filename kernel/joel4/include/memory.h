@@ -32,25 +32,31 @@
 #define PAGE_SIZE_MASK        (PAGE_SIZE-1)  ///< number of bits in page size
 #define PAGE_SIZE_4M          0x400000
 
-#define FREE_PAGE_COUNT       0x100       /* used for page directories and temporary page tables */
+#define RESERVED_PAGE_COUNT   0x200       /* used for page directories and page tables */
 #define APP_STACK_SIZE        0x1000
 
+/* some physical limits */
+#define KERNEL_MEMORY_START (0) /* where does kernel physical memory start */
+#define KERNEL_MEMORY_LIMIT (PAGE_SIZE_4M * 2)    /* how much memory is associated with the kernel */
+#define USER_MEMORY_START   (PAGE_SIZE_4M * 3)
+
 /* The following definitions describe the logical memory layout for each user-space process */
-#define KERNEL_MEMORY_LIMIT   0x800000    /* how much memory is associated with the kernel */
-#define KERNEL_INTERFACE_PAGE 0x900000    /* logical address of KIP for each memory space */
+#define KERNEL_INTERFACE_PAGE 0xF00000    /* logical address of KIP for each memory space */
 #define APP_CODE              0x1000000   /* logical address for code section for each app */
 #define APP_STACK             0x1100000   /* logical address for stack */
 #define APP_DATA              0x1200000   /* logical address for data section for each app */
 
-int k_initMemory(void* pageStore);
+int k_initMemory(void* kernelStart, void* kernelEnd, void* userStart, void* userEnd);
 void* k_allocKernelPage(void);
+void* k_allocUserPage(void);
 void* k_allocPageDirectory(void);
 __inline void* k_getKernelPageDirectory(void);
 __inline void k_copyPageDirectory(void* dest, void* src);
 __inline void k_map4MPage(unsigned int* pPageDir, unsigned int physical, unsigned int logical, unsigned int flags);
 __inline int k_map4KPage(unsigned int* pPageDir, unsigned int physical, unsigned int logical, unsigned int flags);
 void* k_realCreatePageTable(unsigned int* pDir, unsigned int index, int global);
-void k_mapTable(unsigned int* pPageDir, unsigned int address, unsigned int* pTable);
+void k_mapTable(unsigned int* pPageDir, unsigned int address);
+int k_isMapped(unsigned int logical);
 
 /// DEBUG FUNCTIONS
 void k_dumpPageDirectory(unsigned int* pDir);
