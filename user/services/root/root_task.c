@@ -1,9 +1,7 @@
 #include "l4.h"
-#include "root_task.h"
+#include "cpio.h"
 
-/* This is the root task.  It executes in user space even though it is
-   compiled as part of the kernel.  In fact, it is the first user space
-   task created as part of the kernel initialization.  The job of the root
+/* This is the root task. The job of the root
    task is 2-fold:
    1) boot the system by loading all the appropriate drivers from initrd
    2) allocate the system resources during steady state
