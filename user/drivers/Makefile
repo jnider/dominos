@@ -21,7 +21,7 @@ all: output_dir $(DRIVER_TARGETS)
 define PROGRAM_template
 $(DRIVERS).driver: $$($(1).driver)
 	@echo building $$@
-	$(LD) $(LDFLAGS) ../objs/crt0.o $$^ -T ../user.ld ../../kernel/joel4/joel4.lib -o $$@
+	@$(LD) $(LDFLAGS) ../objs/crt0.o $$^ -T ../user.ld ../../kernel/joel4/joel4.lib -o $$@
 
 $(1).driver: $(call $(1).OBJS)
 endef
@@ -34,7 +34,7 @@ output_dir:
 
 clean:
 	rm -rf $(OUTPUT_DIR)
-	rm *.driver
+	rm -f *.driver
 
 tags:
 	$(CTAGS) -f tags src/* include/*

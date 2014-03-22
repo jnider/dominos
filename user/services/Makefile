@@ -32,7 +32,7 @@ output_dir:
 
 clean:
 	rm -rf $(OUTPUT_DIR)
-	rm *.service
+	rm -f *.service
 
 tags:
 	$(CTAGS) -f tags src/* include/*
