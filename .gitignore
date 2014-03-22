@@ -9,6 +9,8 @@ joel4.elf
 *.iso
 *.user
 *.vim
+*.driver
+*.service
 obj/*
 init.cpio
 tags*
