@@ -34,7 +34,7 @@ typedef struct __attribute__((packed)) L4_KIPProcess
 typedef struct __attribute__((packed)) L4_KIP
 {
    char magic[4];             // 0x00: magic number: must be L4µK (see KIP_MAGIC_ below)
-   Word apiVersion;
+   Word apiVersion;           // see L4_GET_API_ and L4_API_ below
    Word apiFlags;
    Word kernDescPtr;
    Word kdebugInit;           // 0x10: kernel debugger
