@@ -157,12 +157,8 @@ void _main(unsigned long magic, multiboot_info_t *pInfo)
       unsigned int i;
 
       for (i = 0, mod = (module_t *) pInfo->mods_addr; i < pInfo->mods_count; i++, mod++)
-      {
          _endKernel = (mod->mod_end + PAGE_SIZE) & ~(PAGE_SIZE_MASK-1);
-         k_printf("_endKernel = 0x%x\n", _endKernel);
-      }
    }
-   k_printf("end of memory: 0x%x\n", pInfo->mem_upper * 1024);
 
    /* find out who we are dealing with */
    k_getCpuInfo(&cpuInfo);
@@ -175,7 +171,6 @@ void _main(unsigned long magic, multiboot_info_t *pInfo)
    }
 
    /* set up the global descriptor table */
-   //k_printf("Init GDT\n");
    GDT_Init();
    /* first the memory protection segments */
    GDT_SetSegment(KERNEL_CODE_SEGMENT,
@@ -200,7 +195,6 @@ void _main(unsigned long magic, multiboot_info_t *pInfo)
                   PRIVILEGE_LEVEL_USER);
    
    /* and now the task state segments */
-   //k_printf("Setting TSS\n");
    GDT_SetTSS(    KERNEL_TSS_SEGMENT,
                   &osTSS,
                   PRIVILEGE_LEVEL_KERNEL);
@@ -212,10 +206,8 @@ void _main(unsigned long magic, multiboot_info_t *pInfo)
                   PRIVILEGE_LEVEL_USER);
 
    ISR_Init();
-   //k_printf("Loading IDT\n");
    IDT_Init(SEGMENT_INDEX(KERNEL_CODE_SEGMENT, 0, PRIVILEGE_LEVEL_KERNEL));
 
-   k_printf("Entering protected mode\n");
    GDT_Load(SEGMENT_INDEX(KERNEL_CODE_SEGMENT, 0, PRIVILEGE_LEVEL_KERNEL),
             SEGMENT_INDEX(KERNEL_DATA_SEGMENT, 0, PRIVILEGE_LEVEL_KERNEL));
 
@@ -227,19 +219,18 @@ void _main(unsigned long magic, multiboot_info_t *pInfo)
    idt_set_gate(10, 0, &badtssTSS, PRIVILEGE_LEVEL_KERNEL);
 
    // load the task segment for the kernel task
-   k_printf("Loading TSS\n");
    unsigned short ostss_index = SEGMENT_INDEX(KERNEL_TSS_SEGMENT, 0, PRIVILEGE_LEVEL_KERNEL);
    LOAD_TASK_REGISTER(ostss_index);
 
    /* initialize memory, and enable paging */
-   k_printf("Initializing memory\n");
+   //k_printf("Initializing memory\n");
    freeHeapSize = KERNEL_MEMORY_LIMIT - _endKernel - RESERVED_PAGE_COUNT * PAGE_SIZE;
    
    // check for page size extensions (4MB pages)
    if (cpuInfo.intel.features & INTEL_FEATURES_PSE)
    {
       k_printf("4MB memory pages supported\n");
-      k_initMemory((void*)(_endKernel + freeHeapSize), KERNEL_MEMORY_LIMIT, USER_MEMORY_START, pInfo->mem_upper * 1024);
+      k_initMemory((void*)(_endKernel + freeHeapSize), (void*)KERNEL_MEMORY_LIMIT, (void*)USER_MEMORY_START, (void*)(pInfo->mem_upper * 1024));
    }
    else
    {
@@ -272,12 +263,12 @@ void _main(unsigned long magic, multiboot_info_t *pInfo)
       SEGMENT_INDEX(KERNEL_DATA_SEGMENT, 0, PRIVILEGE_LEVEL_KERNEL),
       (unsigned int)&_interruptStack);
 
-   k_printf("kernel memory limit: 0x%x\n", KERNEL_MEMORY_LIMIT);    /* how much memory is associated with the kernel */
-   k_printf("user memory start: 0x%x\n", USER_MEMORY_START);
+   //k_printf("kernel memory limit: 0x%x\n", KERNEL_MEMORY_LIMIT);    /* how much memory is associated with the kernel */
+   //k_printf("user memory start: 0x%x\n", USER_MEMORY_START);
 
    /* Create kernel information page, boot info struct, and boot modules */
    k_KIP = (L4_KIP*)k_allocKernelPage(); /* if this causes problems, use k_allocKernel4KPage() instead */
-   k_printf("Creating KIP @ 0x%x\n", k_KIP);
+   //k_printf("Creating KIP @ 0x%x\n", k_KIP);
    BootInfo* pBootInfo = (BootInfo*)ALIGN(((char*)k_KIP + sizeof(L4_KIP)), 4);
 
    k_KIP->magic[0] = KIP_MAGIC_0;

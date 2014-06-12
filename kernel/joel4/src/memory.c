@@ -34,7 +34,7 @@
 #define PAGE_TABLE_MAX_ENTRIES      1024
 
 void k_unmap4KPage(unsigned int* pPageDir, unsigned int logical);
-static unsigned char kernelFreePageMap[((USER_MEMORY_START - KERNEL_MEMORY_LIMIT)/PAGE_SIZE)];
+static unsigned char kernelFreePageMap[((USER_MEMORY_START - KERNEL_MEMORY_LIMIT)/PAGE_SIZE/8)];
 static void* freePageStore;
 static void* nextFreePage;
 static void* kernelPageDir;
@@ -43,15 +43,6 @@ static void* nextFreeUserPage;
 static void* lastFreeUserPage;
 
 void _fh_page_fault(regs_t* pRegs);
-
-////////////////////////////////////////////////////////////////////////////////
-/// @date   03/09/2008
-/// @short  Map the logical address to the physical address - only in real mode
-/// @param  pPageDirectory
-/// @param  physical
-/// @param  logical
-///
-////////////////////////////////////////////////////////////////////////////////
 
 /*
 Linus says:
@@ -66,7 +57,7 @@ static unsigned long __force_order;
 
 __inline void k_setPageDirectory(void* pageDir)
 {
-   k_printf("k_setPageDirectory 0x%x\n", pageDir);
+   //k_printf("k_setPageDirectory 0x%x\n", pageDir);
    asm __volatile__ ("movl %0, %%cr3" :: "r" (pageDir), "m" (__force_order));
 }
 
@@ -111,18 +102,6 @@ __inline unsigned int readCR4(void)
    unsigned int rv = 0;
    asm __volatile__ ("movl %%cr4, %0": "=a" (rv));
    return rv;
-}
-
-unsigned int k_getLogicalAddress(unsigned int pageDir, unsigned int physAddr)
-{
-   int i;
-
-   // kernel memory is always mapped 1:1
-   if (physAddr < KERNEL_MEMORY_LIMIT)
-      return physAddr;
-
-   // need to keep a list of mapped addresses
-   return 0;
 }
 
 int k_isPageFree(void* address, char map[])
@@ -259,7 +238,7 @@ void k_mapTable(unsigned int* pPageDir, unsigned int address)
 
 __inline void k_map4MPage(unsigned int* pPageDir, unsigned int physical, unsigned int logical, unsigned int flags)
 {
-   k_printf("map 4M dir:0x%x phys:0x%x log:0x%x flags:0x%x\n", pPageDir, physical, logical, flags);
+   //k_printf("map 4M dir:0x%x phys:0x%x log:0x%x flags:0x%x\n", pPageDir, physical, logical, flags);
 
    pPageDir[GET_TABLE_INDEX(logical)] = GET_DISK_4M_LOCATION(physical) | MEMORY_PAGE_TABLE_PRESENT | MEMORY_PAGE_TABLE_SIZE | flags;
 }
@@ -269,7 +248,7 @@ __inline int k_map4KPage(unsigned int* pPageDir, unsigned int physical, unsigned
    unsigned int* pTable;
    int alloc = 0;
 
-   k_printf("map 4K page dir:0x%x phys:0x%x log:0x%x flags:0x%x\n", pPageDir, physical, logical, flags);
+   //k_printf("map 4K page dir:0x%x phys:0x%x log:0x%x flags:0x%x\n", pPageDir, physical, logical, flags);
 
    // make sure the table is present
    unsigned int tableIndex = GET_TABLE_INDEX(logical);
@@ -340,7 +319,7 @@ int k_initMemory(void* kernelStart, void* kernelEnd, void* userStart, void* user
    unsigned int i, index;
 
    /* enable PSE (4MB pages in 32-bit paging mode) and PGE (enable global pages) */
-   k_printf("Enabling PSE & PGE\n");
+   //k_printf("Enabling PSE & PGE\n");
    writeCR4((readCR4() | CR4_PSE | CR4_PGE));
 
    // register the page fault handler
@@ -354,11 +333,11 @@ int k_initMemory(void* kernelStart, void* kernelEnd, void* userStart, void* user
    /* initialize the free user page store */
    nextFreeUserPage = userStart;
    lastFreeUserPage = userEnd;
-   k_printf("user mem start: 0x%x user mem end: 0x%x\n", userStart, userEnd);
+   //k_printf("user mem start: 0x%x user mem end: 0x%x\n", userStart, userEnd);
 
    /* allocate the kernel page directory */
    kernelPageDir = k_allocPageDirectory();
-   k_printf("Kernel page directory at: 0x%x\n", kernelPageDir);
+   //k_printf("Kernel page directory at: 0x%x\n", kernelPageDir);
 
    /* map the kernel memory 1:1 */
    for (i=0; i < KERNEL_MEMORY_LIMIT; i+= PAGE_SIZE_4M)
@@ -372,13 +351,9 @@ int k_initMemory(void* kernelStart, void* kernelEnd, void* userStart, void* user
 
    // turn on paging
    writeCR0(readCR0() | CR0_PG);
-   k_printf("paging on\n");
+   //k_printf("paging on\n");
 
    /* now turn on PGE - must be done after paging is on */
-
-   //for (i=0x200000; i < 0x800000; i++)
-   //   *((int*)i) = i;
-      
 }
 
 void _fh_page_fault(regs_t* pRegs)
@@ -459,7 +434,7 @@ int k_isMapped(unsigned int logical)
    if (!k_isTablePresent(pDir, logical))
       return 0;
 
-   unsigned int* pTable = GET_DISK_LOCATION(pDir[GET_TABLE_INDEX(logical)]);
+   unsigned int* pTable = (void*)GET_DISK_LOCATION(pDir[GET_TABLE_INDEX(logical)]);
    if (!(pTable[GET_PAGE_INDEX(logical)] & MEMORY_PAGE_PRESENT))
       return 0;
    
