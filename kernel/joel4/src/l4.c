@@ -60,26 +60,4 @@ Word L4_ThreadControl(L4_ThreadId dest, L4_ThreadId space, L4_ThreadId scheduler
    return (Word)ret;
 }
 
-void L4_DebugPutChar(int c)
-{
-   asm volatile
-   (
-      "movl %0, %%eax      \n"
-      "movl %%esp, %%ecx   \n"      /* save the stack pointer in ECX */                
-      "leal 1f, %%edx      \n"      /* save the instruction pointer in EDX */          
-      "leal %1, %%ebx      \n"      /* save address of first parameter in EBX */
-      "sysenter            \n"      /* make the call */
-      "1:                  \n"
-      : /* output operands */ 
-      : /* input operands */
-        "I" (SYSCALL_DEBUG_PUT_CHAR),     /* reason code -> EAX */
-        "m" (c)
-      : /* clobber list */
-         "%eax",
-         "%ebx",
-         "%ecx",
-         "%edx"
-   );
-}
-
 
