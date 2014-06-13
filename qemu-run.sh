@@ -6,4 +6,9 @@
 
 # This includes redirecting the serial output of the VM to a text file
 
-qemu-system-i386 -cdrom dominos.iso -sdl -serial file:serial1.txt
+if [[ $1 == "gdb" ]]; then
+   debug="-gdb tcp::1234 -S"
+   echo "GDB on"
+fi
+
+qemu-system-i386 -cdrom dominos.iso -sdl -serial file:serial1.txt $debug -D qemu.log
