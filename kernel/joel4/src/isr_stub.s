@@ -315,6 +315,7 @@ isr_common_stub:
 syscall:
    pushl %edx                       # save the user mode instruction pointer
    pushl %ecx                       # save the user mode stack pointer
+   pushl %esi
    
    cmpl $3, %eax                    # make sure there is a valid handler for this index
    jle syscall_index_ok
@@ -329,6 +330,7 @@ syscall_index_ok:
    
    # restore parameters & clean up the stack
    addl $4, %esp
+   popl %esi
    popl %ecx # restore the user mode stack pointer
    popl %edx # restore the user mode instruction pointer
    sysexit
