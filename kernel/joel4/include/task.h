@@ -79,7 +79,6 @@ static inline void k_taskListInit(task_list* list)
 
 static inline int k_taskListAdd(task_list* list, task_t* t)
 {
-   k_printf("k_taskListAdd\n");
    task_node* pNewNode = (task_node*)kmalloc(sizeof(task_node));
 
    /* if the memory allocation fails, return */
@@ -87,14 +86,12 @@ static inline int k_taskListAdd(task_list* list, task_t* t)
       return 0;
 
    /* fill in the new node */
-   k_printf("create node at 0x%x\n", pNewNode);
    pNewNode->pNext = 0;
    pNewNode->pData = t;
 
    task_node* pLast = list->head;
 
    /* simple case: if this is the first node, set it */
-   k_printf("list head: 0x%x\n", list->head);
    if (!list->head)
    {
       list->head = pNewNode;
@@ -102,12 +99,10 @@ static inline int k_taskListAdd(task_list* list, task_t* t)
    }
 
    /* otherwise, run through the list until we hit the end */
-   k_printf("search\n");
    while (pLast->pNext)
       pLast = pLast->pNext;
 
    /* set the new last node */
-   k_printf("set last node\n");
    pLast->pNext = pNewNode;
    return ++list->count;
 }
@@ -204,7 +199,8 @@ extern task_t osTask;
 void k_initTask(unsigned short codeSeg, unsigned short dataSeg, unsigned short stackSegInt, unsigned int intstack);
 
 task_t* k_createTask(void);              ///< creates a new task
-task_t* k_createThread(task_t* pTask, Word* code, Word codeSize, Word* data, Word dataSize, Word entryPoint);              ///< creates a new thread
+unsigned int k_createMemorySpace(void);
+task_t* k_createThread(unsigned int memspace, unsigned int entry, unsigned int stack, unsigned int stackSize);
 void k_setTaskAsPending(task_t* pTask, taskState state);    ///< adds a task to the pending list
 void k_setTaskAsReady(task_t* pTask);                       ///< adds a task to the ready list
 task_t* k_getTaskByID(unsigned int taskID);                 ///< gets a task by its id

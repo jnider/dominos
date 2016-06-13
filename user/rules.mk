@@ -16,4 +16,5 @@ objs/%.o: %.c
 	@echo "Compiling $<"
 	@$(CC) $(CFLAGS) $(INCLUDE_PATHS) -c $< -o $@
 
+# where should we look for matching source (.c and .s) files
 vpath=. src

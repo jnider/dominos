@@ -4,6 +4,7 @@
 #
 # jnider 17-05-2013
 
+OUTPUT_DIR=objs
 PCIE?=y
 
 ifeq ($(strip $(PCIE)), y)

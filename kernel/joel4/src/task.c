@@ -1,21 +1,17 @@
 ////////////////////////////////////////////////////////////////////////////////
-/// @file   ktask.cpp
+/// @file   ktask.c
 /// @short  task related functions and data
 /// @author J.Nider
 /// @date   30/10/2009
 ////////////////////////////////////////////////////////////////////////////////
-////////////////////////////////////////////////////////////////////////////////
 
 #include "kstdio.h"
-//#include "ktimer.h"                    // k_startTimer
-//#include "klist.h"                     // KPtrList
 #include "memory.h"                    // _BASE_ADDRESS
 #include "task.h"                     // task_t, task_list
 #include "eflags.h"
 #include "l4.h"
+#include "i386-elf.h"
 
-//extern tss_t userTSS;
-extern unsigned short user_tss;
 extern L4_KIP* k_KIP;
 
 static task_list allTaskList;   ///< list of all tasks
@@ -25,20 +21,16 @@ static task_t defaultTaskParams;       ///< new tasks copy their default values 
 
 static unsigned int nextTaskID=1;      ///< the last assigned task ID
 
-//extern "C" void k_cooperate(regs_t* pRegs);
-
 static unsigned int createTaskID(void)
 {
    int found=0;
-   unsigned int i;
-   unsigned int id;
-   k_printf("createTaskID\n");
+   //unsigned int i;
+   //unsigned int id;
    do
    {
       if (found)
          nextTaskID++;
 
-      k_printf("nextTaskID: %i\n", nextTaskID);
       // look for this ID in the all task list
       found = (int)k_taskListFindByID(&allTaskList, nextTaskID);
    } while (found);
@@ -81,65 +73,56 @@ task_t* k_createTask(void)
 
    k_memcpy(pTask, &defaultTaskParams, sizeof(task_t));
    pTask->taskID = createTaskID();
-   k_printf("Task ID: 0x%x\n", pTask->taskID);
 
    // add it to the all task list
-   k_printf("task: add to list\n");
    k_taskListAdd(&allTaskList, pTask);
 
    return pTask;
 }
 
-task_t* k_createThread(task_t* pTask, unsigned int* code, unsigned int codeSize, unsigned int* data, unsigned int dataSize, unsigned int entryPoint)
+unsigned int k_createMemorySpace(void)
 {
    int i;
-
-   k_printf("Code: 0x%x (0x%x)\n", code, codeSize);
-   k_printf("Data: 0x%x (0x%x)\n", data, dataSize);
-   k_printf("Entry point: 0x%x\n", entryPoint);
-
-   // choose entry point
-   pTask->segment.eip = entryPoint;
-   pTask->segment.esp = APP_STACK + APP_STACK_SIZE;
-
-   // set up page directory
-   pTask->segment.pdbr = (unsigned int)k_allocPageDirectory();
-   k_printf("PDBR: 0x%x\n", pTask->segment.pdbr);
+   unsigned int pd = (unsigned int)k_allocPageDirectory();
 
    // map the kernel
    for (i=0; i < KERNEL_MEMORY_LIMIT; i+=PAGE_SIZE_4M)
-      k_map4MPage((unsigned int*)pTask->segment.pdbr, i, i, MEMORY_PAGE_TABLE_USER_MODE);
+      k_map4MPage((unsigned int*)pd, i, i, MEMORY_PAGE_TABLE_PRESENT | MEMORY_PAGE_TABLE_GLOBAL);
 
-   // map the table - for now, take it from the kernel
-   k_printf("Task: map tables\n");
-   unsigned int* pTable = k_allocKernelPage();
-   k_mapTable((unsigned int*)pTask->segment.pdbr, (unsigned int)APP_CODE, pTable);
-   k_mapTable((unsigned int*)pTask->segment.pdbr, (unsigned int)APP_DATA, k_allocKernelPage());
+   return pd;
+}
 
-   // map the code
-   k_printf("Task: map code\n");
-   for (i=0; i < codeSize; i+= PAGE_SIZE)
-      k_map4KPage((unsigned int*)pTask->segment.pdbr, (unsigned int)code+i, (unsigned int)APP_CODE+i,
-         MEMORY_PAGE_USER_MODE);
+task_t* k_createThread(unsigned int memspace, unsigned int entry, unsigned int stack, unsigned int stackSize)
+{
+   int i;
 
-   // map the data
-   k_printf("Task: map data\n");
-   for (i=0; i < dataSize; i+= PAGE_SIZE)
-      k_map4KPage((unsigned int*)pTask->segment.pdbr, (unsigned int)data+i, (unsigned int)APP_DATA+i,
-         MEMORY_PAGE_WRITE | MEMORY_PAGE_USER_MODE);
+   k_printf("k_createThread\n");
+   k_printf("Entry point: 0x%x\n", entry);
+   k_printf("Stack: 0x%x\n", stack);
+
+   task_t* pTask = k_createTask();
+   if (!pTask)
+      return 0;
+
+   // save known values
+   pTask->segment.eip = entry;
+   pTask->segment.esp = stack;
+
+   // set up page directory
+   pTask->segment.pdbr = memspace;
 
    // map the stack
-   k_printf("Task: map stack\n");
-   for (i=0; i < APP_STACK_SIZE; i+= PAGE_SIZE)
+   for (i=0; i < stackSize; i+= PAGE_SIZE)
    {
-      k_map4KPage((unsigned int*)pTask->segment.pdbr, (unsigned int)k_allocKernelPage(), (unsigned int)APP_STACK+i,
+      k_map4KPage((unsigned int*)pTask->segment.pdbr, (unsigned int)k_allocUserPage(), (unsigned int)stack-stackSize+i,
          MEMORY_PAGE_WRITE | MEMORY_PAGE_USER_MODE);
    }
 
    // map the KIP
-   k_printf("Task: map KIP from 0x%x to 0x%x\n", k_KIP, KERNEL_INTERFACE_PAGE);
-   k_mapTable((unsigned int*)pTask->segment.pdbr, (unsigned int)KERNEL_INTERFACE_PAGE, k_allocKernelPage());
+   //k_printf("Task: map KIP from 0x%x to 0x%x\n", k_KIP, KERNEL_INTERFACE_PAGE);
    k_map4KPage((unsigned int*)pTask->segment.pdbr, (unsigned int)k_KIP, (unsigned int)KERNEL_INTERFACE_PAGE, MEMORY_PAGE_USER_MODE);
+
+   return pTask;
 }
 
 task_t* k_getCurrentTask()
@@ -282,28 +265,72 @@ unsigned int k_getCurrentTaskID()
    return pCurrentTask->taskID;
 }
 
-/*
-void k_sleep(unsigned int taskID, unsigned int ms)
+int k_loadELF(unsigned int pd, const char* buffer, unsigned int* entry)
 {
-   task_t* pTask = k_getTask(taskID);
-   if (!pTask)
+   int i, j;
+   //k_printf("k_loadELF %i\n", pd);
+
+   Elf32_Ehdr* elfHeader = (Elf32_Ehdr*)buffer;
+
+   if (!BOOTABLE_I386_ELF((*elfHeader)))
    {
-      while(1);
+      k_printf("not executable i386 ELF\n");
+      return 1;
    }
 
-   k_setTaskAsPending(pTask, TASK_STATE_SLEEPING);
+   // set entry point & stack
+   *entry = elfHeader->e_entry;
 
-	// set up the timer
-   k_startTimer(ms, 0, 0, taskID);
+   // look for the program headers
+   if (elfHeader->e_phnum > 16)
+   {
+      k_printf("You have got too many program headers\n");
+      return 2;
+   }
 
- 	__ASM("int $48\n");	// give up the timeslice
+   Elf32_Phdr* pHeader = (Elf32_Phdr*)(elfHeader->e_phoff + buffer);
+   for (i=0; i < elfHeader->e_phnum; i++)
+   {
+      if (pHeader->p_type == PT_LOAD)
+      {
+         /* if this is code (executable), map it and copy it */
+         if (pHeader->p_flags & PF_X)
+         {
+            // allocate the memory needed for this section and copy the program, one page at a time
+            for (j=0; j < pHeader->p_filesz; j+= PAGE_SIZE)
+            {
+               if (!k_isMapped(pHeader->p_vaddr + j))
+               {
+                  void* userPage = k_allocUserPage();
+                  k_map4KPage((unsigned int*)pd, (unsigned int)userPage, pHeader->p_vaddr + j, MEMORY_PAGE_USER_MODE);
+               }
+
+               // copy the memory to a new physical location (aligned to 4k page)
+               k_memcpy((void*)(pHeader->p_vaddr + j), (void*)(buffer + pHeader->p_offset + j), MIN(PAGE_SIZE, pHeader->p_filesz));
+            }
+         }
+      }
+
+      pHeader++;
+   }
+
+   /* now map the bss section */
+   Elf32_Shdr* sHeader = (Elf32_Shdr*)(elfHeader->e_shoff + buffer);
+   for (i=0; i < elfHeader->e_shnum; i++)
+   {
+      //k_printf("name: %s\n", symtab[sh_name]);
+      if (sHeader->sh_type == 8)
+      {
+         for (j=0; j < sHeader->sh_size; j+= PAGE_SIZE)
+         {
+            if (!k_isMapped(sHeader->sh_addr + j))
+            {
+               void* userPage = k_allocUserPage();
+               k_map4KPage((unsigned int*)pd, (unsigned int)userPage, sHeader->sh_addr + j, MEMORY_PAGE_USER_MODE | MEMORY_PAGE_WRITE);
+            }
+         }
+      }
+      sHeader++;
+   }
 }
-
-extern "C" void k_cooperate(regs_t* pRegs)
-{
-	//k_printf("task 0x%x is now blocked\n", pCurrentTask->taskID);
-
-	k_scheduler(pRegs);
-}
-*/
 

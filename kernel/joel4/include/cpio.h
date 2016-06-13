@@ -1,5 +1,5 @@
-#ifndef _ROOT_TASK__H
-#define _ROOT_TASK__H
+#ifndef _CPIO__H
+#define _CPIO__H
 
 struct header_old_cpio {
 		   unsigned short   c_magic;
@@ -48,5 +48,5 @@ typedef struct cpio_newc_header {
 
 #define CPIO_NEWC_MAGIC "070701"
 
-#endif // _ROOT_TASK__H
+#endif // _CPIO__H
 
