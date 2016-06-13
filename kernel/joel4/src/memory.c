@@ -192,7 +192,7 @@ void* k_allocUserPage(void)
       while(1);   // this should run the page swapper
    }
 
-   k_printf("USER ALLOC: 0x%x\n", freeUserPage);
+   //k_printf("USER ALLOC: 0x%x\n", freeUserPage);
    return freeUserPage;
 }
 
@@ -250,10 +250,8 @@ __inline int k_map4KPage(unsigned int* pPageDir, unsigned int physical, unsigned
 
    //k_printf("map 4K page dir:0x%x phys:0x%x log:0x%x flags:0x%x\n", pPageDir, physical, logical, flags);
 
-   // make sure the table is present
-   unsigned int tableIndex = GET_TABLE_INDEX(logical);
-
    /* make sure the page table exists, and is present */
+   unsigned int tableIndex = GET_TABLE_INDEX(logical);
    if (!k_isTablePresent(pPageDir, logical))
    {
       if (GET_DISK_LOCATION(pPageDir[tableIndex]) != 0)
