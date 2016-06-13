@@ -119,7 +119,7 @@ task_t* k_createThread(unsigned int memspace, unsigned int entry, unsigned int s
    }
 
    // map the KIP
-   k_printf("Task: map KIP from 0x%x to 0x%x\n", k_KIP, KERNEL_INTERFACE_PAGE);
+   //k_printf("Task: map KIP from 0x%x to 0x%x\n", k_KIP, KERNEL_INTERFACE_PAGE);
    k_map4KPage((unsigned int*)pTask->segment.pdbr, (unsigned int)k_KIP, (unsigned int)KERNEL_INTERFACE_PAGE, MEMORY_PAGE_USER_MODE);
 
    return pTask;
@@ -291,24 +291,46 @@ int k_loadELF(unsigned int pd, const char* buffer, unsigned int* entry)
    Elf32_Phdr* pHeader = (Elf32_Phdr*)(elfHeader->e_phoff + buffer);
    for (i=0; i < elfHeader->e_phnum; i++)
    {
-      //k_printf("ptype: %i\n", pHeader->p_type);
       if (pHeader->p_type == PT_LOAD)
       {
-         // allocate the memory needed for this section and copy the program, one page at a time
-         for (j=0; j < pHeader->p_filesz; j+= PAGE_SIZE)
+         /* if this is code (executable), map it and copy it */
+         if (pHeader->p_flags & PF_X)
          {
-            if (!k_isMapped(pHeader->p_vaddr + j))
+            // allocate the memory needed for this section and copy the program, one page at a time
+            for (j=0; j < pHeader->p_filesz; j+= PAGE_SIZE)
             {
-               void* userPage = k_allocUserPage();
-               k_map4KPage((unsigned int*)pd, (unsigned int)userPage, pHeader->p_vaddr + j, MEMORY_PAGE_USER_MODE);
-            }
+               if (!k_isMapped(pHeader->p_vaddr + j))
+               {
+                  void* userPage = k_allocUserPage();
+                  k_map4KPage((unsigned int*)pd, (unsigned int)userPage, pHeader->p_vaddr + j, MEMORY_PAGE_USER_MODE);
+               }
 
-            // copy the memory to a new physical location (aligned to 4k page)
-            k_memcpy((void*)(pHeader->p_vaddr + j), (void*)(buffer + pHeader->p_offset + j), MIN(PAGE_SIZE, pHeader->p_filesz));
+               // copy the memory to a new physical location (aligned to 4k page)
+               k_memcpy((void*)(pHeader->p_vaddr + j), (void*)(buffer + pHeader->p_offset + j), MIN(PAGE_SIZE, pHeader->p_filesz));
+            }
          }
       }
 
       pHeader++;
+   }
+
+   /* now map the bss section */
+   Elf32_Shdr* sHeader = (Elf32_Shdr*)(elfHeader->e_shoff + buffer);
+   for (i=0; i < elfHeader->e_shnum; i++)
+   {
+      //k_printf("name: %s\n", symtab[sh_name]);
+      if (sHeader->sh_type == 8)
+      {
+         for (j=0; j < sHeader->sh_size; j+= PAGE_SIZE)
+         {
+            if (!k_isMapped(sHeader->sh_addr + j))
+            {
+               void* userPage = k_allocUserPage();
+               k_map4KPage((unsigned int*)pd, (unsigned int)userPage, sHeader->sh_addr + j, MEMORY_PAGE_USER_MODE | MEMORY_PAGE_WRITE);
+            }
+         }
+      }
+      sHeader++;
    }
 }
 
