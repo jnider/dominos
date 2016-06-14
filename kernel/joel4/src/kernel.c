@@ -157,12 +157,8 @@ void _main(unsigned long magic, multiboot_info_t *pInfo)
       unsigned int i;
 
       for (i = 0, mod = (module_t *) pInfo->mods_addr; i < pInfo->mods_count; i++, mod++)
-      {
          _endKernel = (mod->mod_end + PAGE_SIZE) & ~(PAGE_SIZE_MASK-1);
-         k_printf("_endKernel = 0x%x\n", _endKernel);
-      }
    }
-   k_printf("end of memory: 0x%x\n", pInfo->mem_upper * 1024);
 
    /* find out who we are dealing with */
    k_getCpuInfo(&cpuInfo);
@@ -175,7 +171,6 @@ void _main(unsigned long magic, multiboot_info_t *pInfo)
    }
 
    /* set up the global descriptor table */
-   //k_printf("Init GDT\n");
    GDT_Init();
    /* first the memory protection segments */
    GDT_SetSegment(KERNEL_CODE_SEGMENT,
@@ -200,7 +195,6 @@ void _main(unsigned long magic, multiboot_info_t *pInfo)
                   PRIVILEGE_LEVEL_USER);
    
    /* and now the task state segments */
-   //k_printf("Setting TSS\n");
    GDT_SetTSS(    KERNEL_TSS_SEGMENT,
                   &osTSS,
                   PRIVILEGE_LEVEL_KERNEL);
@@ -212,10 +206,8 @@ void _main(unsigned long magic, multiboot_info_t *pInfo)
                   PRIVILEGE_LEVEL_USER);
 
    ISR_Init();
-   //k_printf("Loading IDT\n");
    IDT_Init(SEGMENT_INDEX(KERNEL_CODE_SEGMENT, 0, PRIVILEGE_LEVEL_KERNEL));
 
-   k_printf("Entering protected mode\n");
    GDT_Load(SEGMENT_INDEX(KERNEL_CODE_SEGMENT, 0, PRIVILEGE_LEVEL_KERNEL),
             SEGMENT_INDEX(KERNEL_DATA_SEGMENT, 0, PRIVILEGE_LEVEL_KERNEL));
 
@@ -227,19 +219,18 @@ void _main(unsigned long magic, multiboot_info_t *pInfo)
    idt_set_gate(10, 0, &badtssTSS, PRIVILEGE_LEVEL_KERNEL);
 
    // load the task segment for the kernel task
-   k_printf("Loading TSS\n");
    unsigned short ostss_index = SEGMENT_INDEX(KERNEL_TSS_SEGMENT, 0, PRIVILEGE_LEVEL_KERNEL);
    LOAD_TASK_REGISTER(ostss_index);
 
    /* initialize memory, and enable paging */
-   k_printf("Initializing memory\n");
+   //k_printf("Initializing memory\n");
    freeHeapSize = KERNEL_MEMORY_LIMIT - _endKernel - RESERVED_PAGE_COUNT * PAGE_SIZE;
    
    // check for page size extensions (4MB pages)
    if (cpuInfo.intel.features & INTEL_FEATURES_PSE)
    {
       k_printf("4MB memory pages supported\n");
-      k_initMemory((void*)(_endKernel + freeHeapSize), KERNEL_MEMORY_LIMIT, USER_MEMORY_START, pInfo->mem_upper * 1024);
+      k_initMemory((void*)(_endKernel + freeHeapSize), (void*)KERNEL_MEMORY_LIMIT, (void*)USER_MEMORY_START, (void*)(pInfo->mem_upper * 1024));
    }
    else
    {
@@ -272,19 +263,24 @@ void _main(unsigned long magic, multiboot_info_t *pInfo)
       SEGMENT_INDEX(KERNEL_DATA_SEGMENT, 0, PRIVILEGE_LEVEL_KERNEL),
       (unsigned int)&_interruptStack);
 
-   k_printf("kernel memory limit: 0x%x\n", KERNEL_MEMORY_LIMIT);    /* how much memory is associated with the kernel */
-   k_printf("user memory start: 0x%x\n", USER_MEMORY_START);
+   //k_printf("kernel memory limit: 0x%x\n", KERNEL_MEMORY_LIMIT);    /* how much memory is associated with the kernel */
+   //k_printf("user memory start: 0x%x\n", USER_MEMORY_START);
 
-   /* Create kernel information page, boot info struct, and boot modules */
+   /* Create kernel information page, boot info struct, and boot modules
+   * The KIP (kernel information page) is a static page owned by the kernel
+   * which is mapped (read-only) into each app's address space. It is used
+   * to give important information about the kernel to the app */
    k_KIP = (L4_KIP*)k_allocKernelPage(); /* if this causes problems, use k_allocKernel4KPage() instead */
-   k_printf("Creating KIP @ 0x%x\n", k_KIP);
+   //k_printf("Creating KIP @ 0x%x\n", k_KIP);
    BootInfo* pBootInfo = (BootInfo*)ALIGN(((char*)k_KIP + sizeof(L4_KIP)), 4);
+   k_printf("kernel: Boot Info @ 0x%x\n", pBootInfo);
 
    k_KIP->magic[0] = KIP_MAGIC_0;
    k_KIP->magic[1] = KIP_MAGIC_1;
    k_KIP->magic[2] = KIP_MAGIC_2;
    k_KIP->magic[3] = KIP_MAGIC_3;
    k_KIP->bootInfo = (Word)((char*)pBootInfo - (char*)k_KIP);
+   k_printf("kernel: Boot Info offset = 0x%x\n", k_KIP->bootInfo);
 
    /* Fill in the boot info struct */
    pBootInfo->magic = BOOT_INFO_MAGIC;
@@ -306,7 +302,7 @@ void _main(unsigned long magic, multiboot_info_t *pInfo)
    Word archFilesize; // size of the archive file
    module_t *mod = (module_t*)pInfo->mods_addr;
 
-   // make sure the module will fit in the remaining space
+   /* make sure the module header will fit in the remaining space */
    if (sizeof(SimpleExecutable) > kipFreeSpace)
    {
       k_printf("Not enough room left in KIP to describe boot module\n");
@@ -314,25 +310,26 @@ void _main(unsigned long magic, multiboot_info_t *pInfo)
    }
 
    /* initrd module */
+   unsigned int usr_mod_start = APP_DATA + 0x1000000;
    SimpleModule* pMod = (SimpleModule*)(pBootInfo->first + (char*)k_KIP);
    pMod->header.type = BOOT_RECORD_TYPE_SIMPLE_MODULE;
    pMod->header.version = 1;
    pMod->header.next = 0;
-   pMod->start = mod->mod_start;
+   pMod->start = usr_mod_start;
    pMod->size = mod->mod_end - mod->mod_start;
    pMod->cmdlineOffset = 0;
    pBootInfo->count++;
    pBootInfo->size += sizeof(SimpleModule);
 
    k_printf("Looking for root task\n");
-   if (cpio_open_archive((void*)pMod->start) == -1)
+   if (cpio_open_archive((void*)mod->mod_start) == -1)
    {
       k_printf("Init module is in an unknown file format - expected CPIO newc format\n");
       while(1);
    }
       
    // find the file containing the list of modules
-   archBuffer = (char*)cpio_open_file(pMod->start, "user/services/root.service", &archFilesize);
+   archBuffer = (char*)cpio_open_file(mod->mod_start, "user/services/root.service", &archFilesize);
    if (!archBuffer)
    {
       k_printf("Cannot find 'root.service' in the init module - don't know how to boot!\n");
@@ -346,7 +343,7 @@ void _main(unsigned long magic, multiboot_info_t *pInfo)
 
    // create a unique address space for this new task
    unsigned int rootTaskPD = k_createMemorySpace();
-   k_printf("Root task's page directory is at address 0x%x\n", rootTaskPD);
+   k_printf("Root task's page directory is at phys address 0x%x\n", rootTaskPD);
 
    k_setPageDirectory(rootTaskPD);
 
@@ -358,10 +355,15 @@ void _main(unsigned long magic, multiboot_info_t *pInfo)
                   APP_DATA,
                   APP_STACK_SIZE);
 
+   /* map the CPIO archive file into the address space of the root task */
+   unsigned int i;
+   for (i=0; i < pMod->size; i += PAGE_SIZE)
+      k_map4KPage((unsigned int*)pRootTask->segment.pdbr, (unsigned int)mod->mod_start+i, (unsigned int)usr_mod_start+i, MEMORY_PAGE_USER_MODE);
+
    //k_setPageDirectory(k_getKernelPageDirectory());
 
-	// turn off interrupts for root task only
-	pRootTask->segment.eflags &= ~EFLAGS_IF;
+	// turn off interrupts for root task only - not sure why, so commenting it out for now
+	//pRootTask->segment.eflags &= ~EFLAGS_IF;
 
    // now start user space, effectively running the first task (root task) 
 	// interrupts are enabled inside user-space tasks automatically (tss)

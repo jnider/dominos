@@ -1,9 +1,8 @@
 ////////////////////////////////////////////////////////////////////////////////
-/// @file   ktask.cpp
+/// @file   ktask.c
 /// @short  task related functions and data
 /// @author J.Nider
 /// @date   30/10/2009
-////////////////////////////////////////////////////////////////////////////////
 ////////////////////////////////////////////////////////////////////////////////
 
 #include "kstdio.h"
@@ -13,8 +12,6 @@
 #include "l4.h"
 #include "i386-elf.h"
 
-//extern tss_t userTSS;
-extern unsigned short user_tss;
 extern L4_KIP* k_KIP;
 
 static task_list allTaskList;   ///< list of all tasks
@@ -24,20 +21,16 @@ static task_t defaultTaskParams;       ///< new tasks copy their default values 
 
 static unsigned int nextTaskID=1;      ///< the last assigned task ID
 
-//extern "C" void k_cooperate(regs_t* pRegs);
-
 static unsigned int createTaskID(void)
 {
    int found=0;
-   unsigned int i;
-   unsigned int id;
-   k_printf("createTaskID\n");
+   //unsigned int i;
+   //unsigned int id;
    do
    {
       if (found)
          nextTaskID++;
 
-      k_printf("nextTaskID: %i\n", nextTaskID);
       // look for this ID in the all task list
       found = (int)k_taskListFindByID(&allTaskList, nextTaskID);
    } while (found);
@@ -103,6 +96,7 @@ task_t* k_createThread(unsigned int memspace, unsigned int entry, unsigned int s
 {
    int i;
 
+   k_printf("k_createThread\n");
    k_printf("Entry point: 0x%x\n", entry);
    k_printf("Stack: 0x%x\n", stack);
 
@@ -118,7 +112,6 @@ task_t* k_createThread(unsigned int memspace, unsigned int entry, unsigned int s
    pTask->segment.pdbr = memspace;
 
    // map the stack
-   k_printf("Task: map stack\n");
    for (i=0; i < stackSize; i+= PAGE_SIZE)
    {
       k_map4KPage((unsigned int*)pTask->segment.pdbr, (unsigned int)k_allocUserPage(), (unsigned int)stack-stackSize+i,
@@ -126,7 +119,7 @@ task_t* k_createThread(unsigned int memspace, unsigned int entry, unsigned int s
    }
 
    // map the KIP
-   k_printf("Task: map KIP from 0x%x to 0x%x\n", k_KIP, KERNEL_INTERFACE_PAGE);
+   //k_printf("Task: map KIP from 0x%x to 0x%x\n", k_KIP, KERNEL_INTERFACE_PAGE);
    k_map4KPage((unsigned int*)pTask->segment.pdbr, (unsigned int)k_KIP, (unsigned int)KERNEL_INTERFACE_PAGE, MEMORY_PAGE_USER_MODE);
 
    return pTask;
@@ -272,41 +265,14 @@ unsigned int k_getCurrentTaskID()
    return pCurrentTask->taskID;
 }
 
-/*
-void k_sleep(unsigned int taskID, unsigned int ms)
-{
-   task_t* pTask = k_getTask(taskID);
-   if (!pTask)
-   {
-      while(1);
-   }
-
-   k_setTaskAsPending(pTask, TASK_STATE_SLEEPING);
-
-	// set up the timer
-   k_startTimer(ms, 0, 0, taskID);
-
- 	__ASM("int $48\n");	// give up the timeslice
-}
-
-extern "C" void k_cooperate(regs_t* pRegs)
-{
-	//k_printf("task 0x%x is now blocked\n", pCurrentTask->taskID);
-
-	k_scheduler(pRegs);
-}
-*/
-
 int k_loadELF(unsigned int pd, const char* buffer, unsigned int* entry)
 {
    int i, j;
-   k_printf("k_loadELF %i\n", pd);
+   //k_printf("k_loadELF %i\n", pd);
 
    Elf32_Ehdr* elfHeader = (Elf32_Ehdr*)buffer;
 
-   if (BOOTABLE_I386_ELF((*elfHeader)))
-      k_printf("executable i386 ELF\n");
-   else
+   if (!BOOTABLE_I386_ELF((*elfHeader)))
    {
       k_printf("not executable i386 ELF\n");
       return 1;
@@ -316,10 +282,6 @@ int k_loadELF(unsigned int pd, const char* buffer, unsigned int* entry)
    *entry = elfHeader->e_entry;
 
    // look for the program headers
-   k_printf("Start of program headers:          %i (bytes into file)\n", elfHeader->e_phoff);
-   k_printf("Size of program headers:           %i (bytes)\n", elfHeader->e_phentsize);	/* program header entry size */
-   k_printf("Number of program headers:         %i (bytes)\n", elfHeader->e_phnum);
-
    if (elfHeader->e_phnum > 16)
    {
       k_printf("You have got too many program headers\n");
@@ -329,31 +291,46 @@ int k_loadELF(unsigned int pd, const char* buffer, unsigned int* entry)
    Elf32_Phdr* pHeader = (Elf32_Phdr*)(elfHeader->e_phoff + buffer);
    for (i=0; i < elfHeader->e_phnum; i++)
    {
-      //k_printf("ptype: %i\n", pHeader->p_type);
       if (pHeader->p_type == PT_LOAD)
       {
-         k_printf("poffset: 0x%x\n", pHeader->p_offset);
-         k_printf("pvaddr: 0x%x\n", pHeader->p_vaddr);
-         k_printf("pfilesz: 0x%x\n", pHeader->p_filesz);
-         
-         // allocate the memory needed for this section and copy the program, one page at a time
-         
-         for (j=0; j < pHeader->p_filesz; j+= PAGE_SIZE)
+         /* if this is code (executable), map it and copy it */
+         if (pHeader->p_flags & PF_X)
          {
-            if (!k_isMapped(pHeader->p_vaddr + j))
+            // allocate the memory needed for this section and copy the program, one page at a time
+            for (j=0; j < pHeader->p_filesz; j+= PAGE_SIZE)
             {
-               void* userPage = k_allocUserPage();
-               k_map4KPage((unsigned int*)pd, (unsigned int)userPage, pHeader->p_vaddr + j, MEMORY_PAGE_USER_MODE);
-            }
+               if (!k_isMapped(pHeader->p_vaddr + j))
+               {
+                  void* userPage = k_allocUserPage();
+                  k_map4KPage((unsigned int*)pd, (unsigned int)userPage, pHeader->p_vaddr + j, MEMORY_PAGE_USER_MODE);
+               }
 
-            // copy the memory to a new physical location (aligned to 4k page)
-            k_printf("Copying memory from 0x%x to 0x%x\n", buffer + (pHeader->p_offset + j), (pHeader->p_vaddr +j));
-            k_memcpy((void*)(pHeader->p_vaddr + j), (void*)(buffer + pHeader->p_offset + j), MIN(PAGE_SIZE, pHeader->p_filesz));
+               // copy the memory to a new physical location (aligned to 4k page)
+               k_memcpy((void*)(pHeader->p_vaddr + j), (void*)(buffer + pHeader->p_offset + j), MIN(PAGE_SIZE, pHeader->p_filesz));
+            }
          }
       }
 
       pHeader++;
    }
-   k_printf("ELF loaded\n");
+
+   /* now map the bss section */
+   Elf32_Shdr* sHeader = (Elf32_Shdr*)(elfHeader->e_shoff + buffer);
+   for (i=0; i < elfHeader->e_shnum; i++)
+   {
+      //k_printf("name: %s\n", symtab[sh_name]);
+      if (sHeader->sh_type == 8)
+      {
+         for (j=0; j < sHeader->sh_size; j+= PAGE_SIZE)
+         {
+            if (!k_isMapped(sHeader->sh_addr + j))
+            {
+               void* userPage = k_allocUserPage();
+               k_map4KPage((unsigned int*)pd, (unsigned int)userPage, sHeader->sh_addr + j, MEMORY_PAGE_USER_MODE | MEMORY_PAGE_WRITE);
+            }
+         }
+      }
+      sHeader++;
+   }
 }
 

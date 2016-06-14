@@ -5,8 +5,14 @@
 # jnider 17-05-2013
 
 OUTPUT_DIR=objs
+
+# decide which targets should be built
 ROOT?=y
 MEM_MANAGER?=y
+
+# here we set up each individual target, and add each one to the overall
+# list of targets called SERVICES. The SERVICES variable is used in the
+# main makefile
 
 ifeq ($(strip $(ROOT)), y)
 	root.SRC = root/root_task.c

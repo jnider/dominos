@@ -1,10 +1,11 @@
 #include "l4.h"
 #include "cpio.h"
 
-/* This is the root task. The job of the root
-   task is 2-fold:
-   1) boot the system by loading all the appropriate drivers from initrd
-   2) allocate the system resources during steady state
+/* This is the root task. The jobs of the root task:
+   1. Physical memory manager - allocate physical memory pages for userspace
+   2. Pager - map virtual pages into memory space
+   3. I/O space management
+   4. scheduler
 */
 
 #define MAX_FILENAME 31

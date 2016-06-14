@@ -34,7 +34,7 @@ typedef struct __attribute__((packed)) L4_KIPProcess
 typedef struct __attribute__((packed)) L4_KIP
 {
    char magic[4];             // 0x00: magic number: must be L4µK (see KIP_MAGIC_ below)
-   Word apiVersion;
+   Word apiVersion;           // see L4_GET_API_ and L4_API_ below
    Word apiFlags;
    Word kernDescPtr;
    Word kdebugInit;           // 0x10: kernel debugger
@@ -223,7 +223,27 @@ L4_MsgTag L4_SendLIPC(L4_ThreadId to, L4_ThreadId FromSpecifier, Word Timeouts, 
 
 /* Debug */
 inline void L4_DebugHalt(void);
-void L4_DebugPutChar(int c);
+//static inline void L4_DebugPutChar(int c);
+static inline void L4_DebugPutChar(int c)
+{
+   asm volatile
+   (
+      "movl %%esp, %%ecx   \n"      /* save the stack pointer in ECX */                
+      "leal 1f, %%edx      \n"      /* save the instruction pointer in EDX */          
+      "leal %1, %%ebx      \n"      /* save address of first parameter in EBX */
+      "sysenter            \n"      /* make the call */
+      "1:                  \n"
+      : /* output operands */ 
+      : /* input operands */
+        "a" (SYSCALL_DEBUG_PUT_CHAR),     /* reason code -> EAX */
+        "m" (c)
+      : /* clobber list */
+         "%ebx",
+         "%ecx",
+         "%edx"
+   );
+}
+
 
 #ifdef ARCH_IA32
 #endif

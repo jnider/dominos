@@ -40,6 +40,7 @@ SECTIONS {
    {
       *(EXCLUDE_FILE(objs/root_task.o) *)
    } : main_data
+.gnu.hash : { *(.gnu.hash) }: main_data
 
    /* leave 4K for the kernel stack - counts down*/
    .stacks ALIGN(0x1000):
