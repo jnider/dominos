@@ -50,10 +50,11 @@ int k_initMemory(void* kernelStart, void* kernelEnd, void* userStart, void* user
 void* k_allocKernelPage(void);
 void* k_allocUserPage(void);
 void* k_allocPageDirectory(void);
-__inline void* k_getKernelPageDirectory(void);
-__inline void k_copyPageDirectory(void* dest, void* src);
-__inline void k_map4MPage(unsigned int* pPageDir, unsigned int physical, unsigned int logical, unsigned int flags);
-__inline int k_map4KPage(unsigned int* pPageDir, unsigned int physical, unsigned int logical, unsigned int flags);
+void* k_getKernelPageDirectory(void);
+void k_setPageDirectory(void* pageDir);
+void k_copyPageDirectory(void* dest, void* src);
+void k_map4MPage(unsigned int* pPageDir, unsigned int physical, unsigned int logical, unsigned int flags);
+int k_map4KPage(unsigned int* pPageDir, unsigned int physical, unsigned int logical, unsigned int flags);
 void* k_realCreatePageTable(unsigned int* pDir, unsigned int index, int global);
 void k_mapTable(unsigned int* pPageDir, unsigned int address);
 int k_isMapped(unsigned int logical);

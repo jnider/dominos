@@ -7,6 +7,7 @@
 
 #include "memory.h"
 #include "isr.h"     /* regs_t */
+#include "kstdio.h" // k_printf
 
 // flags in CR0 control register
 #define CR0_PG 0x80000000  // 1=paging enabled
@@ -55,49 +56,49 @@ Linus says:
 */
 static unsigned long __force_order;
 
-__inline void k_setPageDirectory(void* pageDir)
+void k_setPageDirectory(void* pageDir)
 {
    //k_printf("k_setPageDirectory 0x%x\n", pageDir);
    asm __volatile__ ("movl %0, %%cr3" :: "r" (pageDir), "m" (__force_order));
 }
 
-__inline void* k_getPageDirectory(void)
+void* k_getPageDirectory(void)
 {
    void* rv;
    asm __volatile__ ("movl %%cr3, %0": "=r" (rv), "=m" (__force_order));
    return rv;
 }
 
-__inline int k_isTablePresent(unsigned int* pPageDir, unsigned int address)
+int k_isTablePresent(unsigned int* pPageDir, unsigned int address)
 {
    return (pPageDir[GET_TABLE_INDEX(address)]) & MEMORY_PAGE_TABLE_PRESENT;
 }
 
-__inline unsigned int readCR0(void)
+unsigned int readCR0(void)
 {
    unsigned int rv = 0;
    asm __volatile__ ("movl %%cr0, %0": "=a" (rv));
    return rv;
 }
 
-__inline void writeCR0(unsigned int val)
+void writeCR0(unsigned int val)
 {
    asm __volatile__ ("movl %0, %%cr0" :: "dN" (val));
 }
 
-__inline unsigned int readCR2(void)
+unsigned int readCR2(void)
 {
    unsigned int rv = 0;
    asm __volatile__ ("movl %%cr2, %0": "=a" (rv));
    return rv;
 }
 
-__inline void writeCR4(unsigned int val)
+void writeCR4(unsigned int val)
 {
    asm __volatile__ ("movl %0, %%cr4" :: "dN" (val));
 }
 
-__inline unsigned int readCR4(void)
+unsigned int readCR4(void)
 {
    unsigned int rv = 0;
    asm __volatile__ ("movl %%cr4, %0": "=a" (rv));
@@ -236,14 +237,14 @@ void k_mapTable(unsigned int* pPageDir, unsigned int address)
       MEMORY_PAGE_TABLE_WRITE | MEMORY_PAGE_TABLE_GLOBAL | MEMORY_PAGE_TABLE_USER_MODE;
 }
 
-__inline void k_map4MPage(unsigned int* pPageDir, unsigned int physical, unsigned int logical, unsigned int flags)
+void k_map4MPage(unsigned int* pPageDir, unsigned int physical, unsigned int logical, unsigned int flags)
 {
    //k_printf("map 4M dir:0x%x phys:0x%x log:0x%x flags:0x%x\n", pPageDir, physical, logical, flags);
 
    pPageDir[GET_TABLE_INDEX(logical)] = GET_DISK_4M_LOCATION(physical) | MEMORY_PAGE_TABLE_PRESENT | MEMORY_PAGE_TABLE_SIZE | flags;
 }
 
-__inline int k_map4KPage(unsigned int* pPageDir, unsigned int physical, unsigned int logical, unsigned int flags)
+int k_map4KPage(unsigned int* pPageDir, unsigned int physical, unsigned int logical, unsigned int flags)
 {
    unsigned int* pTable;
    int alloc = 0;
@@ -419,7 +420,7 @@ void _fh_page_fault(regs_t* pRegs)
    HALT();
 }
 
-__inline void* k_getKernelPageDirectory(void)
+void* k_getKernelPageDirectory(void)
 {
    return kernelPageDir;
 }
