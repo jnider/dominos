@@ -117,7 +117,7 @@ static inline task_t* k_taskListHead(task_list* list)
    return list->head->pData;
 }
 
-static inline k_taskListDeleteByID(task_list* list, int id)
+static inline void k_taskListDeleteByID(task_list* list, int id)
 {
    unsigned int i;
    task_node* pNode = list->head;
