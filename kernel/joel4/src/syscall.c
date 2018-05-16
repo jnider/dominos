@@ -1,6 +1,8 @@
 #include "l4.h"
 #include "task.h"
 #include "memory.h"
+#include "serial.h"
+#include "kvideo.h"
 
 typedef Word(*syscall_handler)(Word* stackPtr);
 

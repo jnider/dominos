@@ -12,6 +12,7 @@
  */
 
 #include "serial.h"
+#include "kstdio.h"
 
 /* Set default values if none specified */
 

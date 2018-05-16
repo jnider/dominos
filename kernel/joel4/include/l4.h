@@ -222,7 +222,11 @@ L4_MsgTag L4_SendLIPC(L4_ThreadId to, L4_ThreadId FromSpecifier, Word Timeouts, 
 //Word ProcessorControl (Word ProcessorNo, InternalFrequency, ExternalFrequency, voltage);
 
 /* Debug */
-inline void L4_DebugHalt(void);
+inline void L4_DebugHalt(void)
+{
+	while (1);
+}
+
 //static inline void L4_DebugPutChar(int c);
 static inline void L4_DebugPutChar(int c)
 {

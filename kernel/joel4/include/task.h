@@ -175,7 +175,7 @@ static inline task_t* k_taskListFindByName(task_list* list, const char* name)
 
    /* make sure there is a node */
    if (!pNode)
-      return;
+      return 0;
 
    while (pNode)
    {
@@ -215,7 +215,8 @@ void k_boostTaskPriority(unsigned int taskID, enum taskPriorityBoost boost);
 void k_unboostTaskPriority(unsigned int taskID, enum taskPriorityBoost boost);
 void k_switchTask(regs_t* pRegs, task_t* pNextTask);        ///< switches tasks
 void k_scheduler(regs_t* pRegs);
-
+int k_loadELF(unsigned int pd, const char* buffer, unsigned int* entry);
 void k_sleep(unsigned int taskID, unsigned int ms);
+
 #endif // _KTASK__H
 

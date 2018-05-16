@@ -5,12 +5,13 @@
 #include "gdt.h"                       // for managing global descriptor table
 #include "idt.h"                       // for managing interrupt descriptor table
 #include "isr.h"                       // interrupt routines
-#include "task.h"
+#include "task.h"                     // task_t, task_list
 #include "memory.h"
 #include "cpu.h"
 #include "version.h"
 #include "eflags.h"	// for turning off interrupts in root task - should be cpu specific
 #include "cpio.h"
+#include "kvideo.h"
 
 #define LOAD_TASK_REGISTER(_index)  __ASM("ltr %0\n" :: "am"(_index))
 #define ALIGN(_addr, _align) (((Word)_addr + _align - 1) - (((Word)_addr + _align - 1) % _align))
@@ -162,11 +163,11 @@ void _main(unsigned long magic, multiboot_info_t *pInfo)
 
    /* find out who we are dealing with */
    k_getCpuInfo(&cpuInfo);
-   //k_printCpuInfo(&cpuInfo);
    
    if (k_strcmp(cpuInfo.intel.vendorStr, "GenuineIntel"))
    {
       k_printf("We don't support vendors other than Intel at this time\n");
+   	k_printCpuInfo(&cpuInfo);
       return;
    }
 
@@ -216,7 +217,7 @@ void _main(unsigned long magic, multiboot_info_t *pInfo)
    badtssTSS.ds = SEGMENT_INDEX(KERNEL_DATA_SEGMENT, 0, PRIVILEGE_LEVEL_KERNEL);
    badtssTSS.ss = SEGMENT_INDEX(KERNEL_DATA_SEGMENT, 0, PRIVILEGE_LEVEL_KERNEL);
    badtssTSS.eip = (unsigned int)&_interruptStack;
-   idt_set_gate(10, 0, &badtssTSS, PRIVILEGE_LEVEL_KERNEL);
+   // JKN - this doesn't look right! idt_set_gate(10, 0, &badtssTSS, PRIVILEGE_LEVEL_KERNEL);
 
    // load the task segment for the kernel task
    unsigned short ostss_index = SEGMENT_INDEX(KERNEL_TSS_SEGMENT, 0, PRIVILEGE_LEVEL_KERNEL);
@@ -329,7 +330,7 @@ void _main(unsigned long magic, multiboot_info_t *pInfo)
    }
       
    // find the file containing the list of modules
-   archBuffer = (char*)cpio_open_file(mod->mod_start, "user/services/root.service", &archFilesize);
+   archBuffer = (char*)cpio_open_file((void*)mod->mod_start, "user/services/root.service", &archFilesize);
    if (!archBuffer)
    {
       k_printf("Cannot find 'root.service' in the init module - don't know how to boot!\n");
@@ -345,7 +346,7 @@ void _main(unsigned long magic, multiboot_info_t *pInfo)
    unsigned int rootTaskPD = k_createMemorySpace();
    k_printf("Root task's page directory is at phys address 0x%x\n", rootTaskPD);
 
-   k_setPageDirectory(rootTaskPD);
+   k_setPageDirectory((void*)rootTaskPD);
 
    int entry;
    k_loadELF(rootTaskPD, archBuffer, &entry);
@@ -369,7 +370,7 @@ void _main(unsigned long magic, multiboot_info_t *pInfo)
 	// interrupts are enabled inside user-space tasks automatically (tss)
    k_memcpy(&userTSS, &pRootTask->segment, sizeof(tss_t));
    k_printf("Switching to root task (PDBR=0x%x)\n", userTSS.pdbr);
-   k_setPageDirectory(userTSS.pdbr);
+   k_setPageDirectory((void*)userTSS.pdbr);
    //k_dumpPageDirectory((unsigned int*)userTSS.pdbr);
    unsigned int task_sel[2];
    task_sel[0] = 0;

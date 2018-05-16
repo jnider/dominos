@@ -52,17 +52,6 @@ enum SystemDescriptorType
    DESCRIPTOR_SYSTEM_32_TRAP_GATE      ///< 32-bit trap gate
 };
 
-//////
-/// Used for CPL, IOPL, etc
-//////
-enum PrivilegeLevel
-{
-   PRIVILEGE_LEVEL_KERNEL,
-   PRIVILEGE_LEVEL_UNUSED1,
-   PRIVILEGE_LEVEL_UNUSED2,
-   PRIVILEGE_LEVEL_USER
-};
-
 // the tss must fit in a page, and be aligned dword
 struct __PACKED tss_t
 {

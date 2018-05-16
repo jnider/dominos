@@ -48,5 +48,8 @@ typedef struct cpio_newc_header {
 
 #define CPIO_NEWC_MAGIC "070701"
 
+char* cpio_open_file(void* buffer, const char* filename, Word* filesize);
+int cpio_open_archive(void* buffer);
+
 #endif // _CPIO__H
 

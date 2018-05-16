@@ -1,5 +1,6 @@
 #include "l4.h"
 #include "cpio.h"
+#include "kstdio.h"
 
 #define MAX_FILENAME 256
 

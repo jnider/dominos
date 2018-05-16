@@ -9,6 +9,7 @@
 #include "memory.h"                    // _BASE_ADDRESS
 #include "task.h"                     // task_t, task_list
 #include "eflags.h"
+#include "idt.h"
 #include "l4.h"
 #include "i386-elf.h"
 

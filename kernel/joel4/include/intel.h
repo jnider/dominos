@@ -108,7 +108,7 @@ typedef struct intel_cpu_info
 
 } intel_cpu_info;
 
-static inline rdtsc(unsigned long long* tsc)
+static inline void rdtsc(unsigned long long* tsc)
 {
    asm volatile("rdtsc" : "=A"(*tsc));
 }

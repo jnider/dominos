@@ -1,6 +1,6 @@
 #include "cpu.h"
 #include "eflags.h"
-
+#include "kstdio.h"
 
 /* Machine-specific Registers (MSR) - intel vol 2B table 4-7 */
 #define IA32_SYSENTER_CS   0x174
@@ -8,13 +8,13 @@
 #define IA32_SYSENTER_EIP  0x176
 
 /* Read Machine-Specific Register */
-static inline rdmsr(unsigned int address, unsigned int* low, unsigned int* high)
+static inline unsigned int rdmsr(unsigned int address, unsigned int* low, unsigned int* high)
 {
    asm volatile("rdmsr" : "=a"(*low), "=d"(*high) : "c"(address));
 }
 
 /* Write Machine-Specific Register */
-static inline wrmsr(unsigned int address, unsigned int low, unsigned int high)
+static inline void wrmsr(unsigned int address, unsigned int low, unsigned int high)
 {
    asm volatile("wrmsr" :: "a"(low), "d"(high), "c"(address));
 }
