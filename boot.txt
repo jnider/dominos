@@ -1,4 +1,2 @@
-drivers/pcie.driver
-protocols/pcie.protocol
-drivers/usb.driver
-protocols/usb.protocol
+user/services/root.service
+user/drivers/pcie.driver
