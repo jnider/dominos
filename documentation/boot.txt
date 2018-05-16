@@ -1,0 +1,9 @@
+Somehow, the kernel and initrd get loaded into memory. There are many methods to do this,
+such as a bootloader (grub), netboot (pxe) or directly by QEMU. It doesn't matter.
+
+The kernel is a regular ELF file, which is multiboot compliant.
+
+The initial ramdisk is a CPIO archive.
+
+Everything starts from boot.s, which contains the multiboot header and tries to get into
+a high-level language as quickly as possible.

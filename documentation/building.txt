@@ -1,0 +1,14 @@
+How to build the kernel
+-----------------------
+The kernel is a regular ELF file.
+
+
+How to build the initial ramdisk
+--------------------------------
+The initial ramdisk is a CPIO archive. It is created like this:
+	cpio --format=newc -o < initfiles.txt > init.cpio
+
+It reads the file "initfiles.txt" which is a simple text file specifying which files to
+include in the archive. This is a very simple setup. The output directory structure matches
+the input directory structure, and there is currently no way to change that. There may come
+a time in the future that this will change.
