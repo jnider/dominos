@@ -8,7 +8,6 @@
 #ifndef _KTASK__H
 #define _KTASK__H
 
-#include "l4.h"
 #include "gdt.h"
 #include "isr.h"        // regs_t
 
