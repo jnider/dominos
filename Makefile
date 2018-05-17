@@ -40,6 +40,11 @@ user:
 init.cpio: initfiles.txt boot.txt user
 	cpio --format=newc -o < initfiles.txt > init.cpio
 
+.PHONY: tags clean
+
+tags:
+	ctags -R -f tags user/* kernel/joel4/src/l4.c kernel/joel4/include/*
+
 clean:
 	make -C $(KERNEL_DIR) clean
 	make -C user clean
