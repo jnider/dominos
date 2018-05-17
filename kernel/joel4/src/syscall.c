@@ -4,41 +4,56 @@
 #include "serial.h"
 #include "kvideo.h"
 
-typedef Word(*syscall_handler)(Word* stackPtr);
+typedef Word(*syscall_handler)(void* params);
+
+typedef struct KernelInterface_params
+{
+   Word* apiVersion;
+   Word* apiFlags;
+   Word* kernelID;
+} KernelInterface_params;
+
+typedef struct ThreadControl_params
+{
+   L4_ThreadId dest;
+   L4_ThreadId space;
+   L4_ThreadId scheduler;
+   L4_ThreadId pager;
+   void* utcbLocation;
+} ThreadControl_params;
 
 /*******************************************************************
  * The kernelspace handlers
  *******************************************************************/
-static Word InvalidHandler(Word* index)
+static Word InvalidHandler(void* index)
 {
    k_printf("Invalid syscall index %i\n", index);
    HALT();
 }
 
 /* returns the address of the kernel interface page (KIP) */
-static Word KernelInterface(Word* stackPtr)
+static Word KernelInterface(void* params)
 {
-   Word* apiVersion = (Word*)*(stackPtr);
-   Word* apiFlags = (Word*)*(stackPtr+1);
-   Word* kernelID = (Word*)*(stackPtr+2);
-
-   *apiVersion = ((L4_API_VERSION_X2 << 24) | (6 << 16)); // X.2 v6
-   *apiFlags = 0; // little-endian, 32-bit
-   *kernelID = (L4_KERNEL_ID_JOEL4 << 24);
+	KernelInterface_params* p = (KernelInterface_params*)params;
+   *p->apiVersion = ((L4_API_VERSION_X2 << 24) | (6 << 16)); // X.2 v6
+   *p->apiFlags = 0; // little-endian, 32-bit
+   *p->kernelID = (L4_KERNEL_ID_JOEL4 << 24);
 
    return KERNEL_INTERFACE_PAGE;
 }
 
 /* create, modify or delete a thread */
-static Word ThreadControl(Word* stackPtr)
+static Word ThreadControl(void* params)
 {
-   L4_ThreadId dest = *(stackPtr);
-   L4_ThreadId space = *(stackPtr+1);
-   L4_ThreadId scheduler = *(stackPtr+2);
-   L4_ThreadId pager = *(stackPtr+3);
-   void* utcbLocation = (void*)*(stackPtr+4);
-   k_printf("ThreadControl dest:0x%x space: 0x%x scheduler: 0x%x pager: 0x%x utcb: 0x%x\n", dest, space, scheduler, pager, utcbLocation);
+	ThreadControl_params* p = (ThreadControl_params*)params;
+   k_printf("ThreadControl dest:0x%x space: 0x%x scheduler: 0x%x pager: 0x%x utcb: 0x%x\n", p->dest, p->space, p->scheduler, p->pager, p->utcbLocation);
 
+	// check to see if the address space already exists
+	task_t* space = k_getTaskByID(p->space);
+	if (space)
+		k_printf("Address space %i already exists\n", p->space);
+	else
+		k_printf("Address space %i doesn't exist\n", p->space);
    /*
    k_createThread(rootTask, &_root_task_code_start,
                   (unsigned int)&_root_task_code_size,
@@ -49,9 +64,9 @@ static Word ThreadControl(Word* stackPtr)
    return 0;
 }
 
-static inline Word DebugPrintChar(Word* stackPtr)
+static inline Word DebugPrintChar(void* params)
 {
-   Word p1 = *(stackPtr);
+   Word p1 = *(Word*)(params);
    k_putchar((char)p1);
    serial_putc((char)p1);
    return 0;
@@ -71,7 +86,7 @@ syscall_handler syscall_handler_table[] =
 {
    InvalidHandler,
    KernelInterface,
-   ThreadControl,
+   ThreadControl,					/* SYSCALL_THREAD_CONTROL */
    DebugPrintChar
 };
 
