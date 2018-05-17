@@ -14,7 +14,7 @@ include tools.mk
 include rules.mk
 include files.mk
 
-INCLUDE_PATHS=-Iinclude
+INCLUDE_PATHS=-Iinclude -Iuser
 SRC_DIR=src
 OUTPUT_DIR=objs
 OUTPUT_NAME=joel4
