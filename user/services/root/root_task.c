@@ -14,9 +14,6 @@
 
 #define DEFAULT_UTCB 0x801000
 
-typedef Word cpio_handle;
-typedef Word file_handle;
-
 static void* cpioArchive;
 static Word threadId=2;
 
@@ -160,8 +157,7 @@ static void memcpy(void* dest, void* src, Word size)
       *(char*)dest++ = *(char*)src++;
 }
 
-
-static cpio_handle cpio_open_archive(void* buffer)
+cpio_handle cpio_open_archive(void* buffer)
 {
    // read image & determine type
    char *magic = ((cpio_newc_header*)buffer)->c_magic;
@@ -179,7 +175,7 @@ static cpio_handle cpio_open_archive(void* buffer)
    return INVALID_HANDLE;
 }
 
-static char* cpio_open_file(cpio_handle h, const char* filename, Word* filesize)
+char* cpio_open_file(cpio_handle h, const char* filename, Word* filesize)
 {
    cpio_newc_header* pFileHdr=(cpio_newc_header*)cpioArchive;
 
@@ -243,7 +239,9 @@ static int LoadProgram(const char* name, const char* buffer, Word size)
 
    printf("Loading program %s from 0x%x size %i bytes\n", name, buffer, size);
 
-   // loading consists of creating a task, and a memory space
+   // loading consists of creating a task, and a memory space. The memory space is created
+	// automatically by using a thread id that does not have an address space associated with it
+	// yet (in fact, it doesn't even exist).
    newThread = GetFreeThreadId();
    printf("Creating thread %i\n", newThread);
    rc = L4_ThreadControl(newThread, newThread, L4_Myself(), L4_Myself(), (void*)DEFAULT_UTCB);
@@ -316,7 +314,7 @@ void main(void)
       printf("Cannot find 'boot.txt' in the init module - don't know how to boot!\n");
       while(1);
    }
-   printf("archFilesize: %i bytes\n", archFilesize);
+   //printf("archFilesize: %i bytes\n", archFilesize);
 
    // run through the list of all modules and load them one by one
    char* src = archBuffer; 
@@ -359,7 +357,7 @@ void main(void)
    }
    // enable the scheduler
 
-   printf("Complete\n");
+   printf("Root task complete\n");
 
    while(1);
 }
