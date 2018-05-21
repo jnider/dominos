@@ -199,6 +199,7 @@ void k_initTask(unsigned short codeSeg, unsigned short dataSeg, unsigned short s
 
 task_t* k_createTask(void);              ///< creates a new task
 unsigned int k_createMemorySpace(void);
+unsigned long k_getMemorySpace(task_t* ptask);
 task_t* k_createThread(unsigned int memspace, unsigned int entry, unsigned int stack, unsigned int stackSize);
 void k_setTaskAsPending(task_t* pTask, taskState state);    ///< adds a task to the pending list
 void k_setTaskAsReady(task_t* pTask);                       ///< adds a task to the ready list

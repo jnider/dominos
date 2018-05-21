@@ -49,19 +49,22 @@ static Word ThreadControl(void* params)
    k_printf("ThreadControl dest:0x%x space: 0x%x scheduler: 0x%x pager: 0x%x utcb: 0x%x\n", p->dest, p->space, p->scheduler, p->pager, p->utcbLocation);
 
 	// check to see if the address space already exists
-	task_t* space = k_getTaskByID(p->space);
-	if (space)
+   unsigned long mspace=0;
+	task_t* mainTask = k_getTaskByID(p->space);
+	if (mainTask)
+   {
 		k_printf("Address space %i already exists\n", p->space);
+      mspace = k_getMemorySpace(mainTask);
+   }
 	else
+   {
 		k_printf("Address space %i doesn't exist\n", p->space);
-   /*
-   k_createThread(rootTask, &_root_task_code_start,
-                  (unsigned int)&_root_task_code_size,
-                  (void*)&_root_task_data_start,
-                  (unsigned int)&_root_task_data_size,
-                  (unsigned int)root_task_main);
-   */
-   return 0;
+      mspace = k_createMemorySpace();
+   }
+   task_t* newTask = k_createThread(mspace, 0, 0, 0);
+   if (newTask)
+      return 0;
+   return 1;
 }
 
 static inline Word DebugPrintChar(void* params)

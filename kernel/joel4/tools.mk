@@ -12,16 +12,7 @@
 # make sure all the needed tools are installed correctly
 # this is a cheap version of this function - I'm sure someone can come up
 # with something better in the future.
-tools:
-	@echo "Checking for the existence of required tools"
-	which $(CC)
-	which $(LD)
-	which $(AS)
-	which $(CTAGS)
-	which $(AWK)
-	which $(CLOC)
-
-CC=gcc
+CC?=gcc
 LD=ld
 AS=as
 CTAGS=ctags
@@ -43,4 +34,13 @@ CFLAGS+=-O0 # no optimizations
 else
 CFLAGS+=-O2 # many optimizations
 endif
+
+tools:
+	@echo "Checking for the existence of required tools"
+	which $(CC)
+	which $(LD)
+	which $(AS)
+	which $(CTAGS)
+	which $(AWK)
+	which $(CLOC)
 

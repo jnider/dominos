@@ -243,6 +243,7 @@ static int LoadProgram(const char* name, const char* buffer, Word size)
 	// automatically by using a thread id that does not have an address space associated with it
 	// yet (in fact, it doesn't even exist).
    newThread = GetFreeThreadId();
+   
    printf("Creating thread %i\n", newThread);
    rc = L4_ThreadControl(newThread, newThread, L4_Myself(), L4_Myself(), (void*)DEFAULT_UTCB);
 

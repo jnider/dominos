@@ -10,7 +10,7 @@ if [[ "$1" = "debug" ]]; then
    DEBUG="-S -s -D qemu.log"
 fi
 
-QEMU=/usr/local/bin/qemu-system-x86_64
+QEMU=/usr/bin/qemu-system-x86_64
 MEMORY=2048
 
-$QEMU -m $MEMORY -cpu Skylake-Server -cdrom dominos.iso -nographic # -serial file:serial1.txt $DEBUG
+$QEMU -m $MEMORY -cpu Haswell -cdrom dominos.iso -nographic # -serial file:serial1.txt $DEBUG

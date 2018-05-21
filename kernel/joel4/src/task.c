@@ -93,6 +93,13 @@ unsigned int k_createMemorySpace(void)
    return pd;
 }
 
+unsigned long k_getMemorySpace(task_t* ptask)
+{
+   if (!ptask)
+      return 0;
+   return ptask->segment.pdbr;
+}
+
 task_t* k_createThread(unsigned int memspace, unsigned int entry, unsigned int stack, unsigned int stackSize)
 {
    int i;
