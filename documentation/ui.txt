@@ -1,0 +1,40 @@
+Why do the gnerds like dumping out a shitload of verbose text for every action?
+
+It gives a good feeling to see the program "run". A visual indication that the program is doing something, and if we
+are quick enough, maybe even catch a glimpse of what it is doing.  This is the equivalent of always running in debug
+mode, since the information is often detailed enough to debug the program without running it again in another mode. This
+is a nice feature when the program fails, but a waste of time and resources if the program doesn't fail. So now the
+question is a bit philosophical - do programs fail more often than they succeed?  If you are a developer, the answer is
+undoubtedly "yes" - if the program runs correctly, you stop running the program or start adding a new feature which
+immediately breaks. If you are a computer user, I hope the case is the opposite.
+
+I believe this stems from our learned lack of trust that the program will do what we want. Programming computers with
+precise instructions on what to do is hard. No matter which language, what the computer does and what we wanted the
+computer to do are, more often than not, different. We learn the hard way that programs can get stuck (no forward
+progress) and we are powerless to discover that it happened (much less why it happened) without a constant indication
+that the program is "doing something" and "doing something useful".
+
+The GUI guys nearly solved this problem. Progress bars are a very good solution (but still not perfect) to the "I don't
+trust my program to complete" problem. The biggest problem with progress bars are that it's really not clear how to
+divide up "percentage of work complete", especially in a multi-stage program such as an OS installer. This is also the
+main problem when implementing time estimators (your installation will be done in %i minutes). In a single stage program
+you get a slightly easier problem since all of the slices of work are the same size and can easily be divided by 100 -
+such as in the case of downloading a file (your download will be done in %i seconds).
+
+Even worse are the "sand clocks". To be clear, the icons could be anything - rotating circles, tracers, little foxes
+running around a globe - anything that shows movement. However, there are two big problems with these.  1) missing
+information - I don't know "what" my program is doing, or how far along it is 2) misrepresentation - Lazy programmers
+throw up an animation rather than a circular progress bar. What's the difference? An animation always plays, spinning to
+its heart's content regardless of what is happening in the program. Only in extreme cases of the CPU completely working
+on another task that the animation stops. So that means we can only glean minimal information meaning "the CPU isn't
+completely busy". If however, programmers take the time to spin the icon based on some measure of progress, then it
+becomes a true circular progress bar, which gives slightly more information namely, "the program is making forward
+progress".
+
+So where does that leave us?  Especially in environments where there is no expectation of a gui, we must have some kind
+of indication that the program is progressing and doing what we want. However, it is not necessary to see a full dump of
+every instruction the computer is executing. Conclusion - develop programs as you want them to be used, not as they need
+to be debugged. This is admittedly difficult - developers tend to think as developers, not as product management
+(especially in the case of the gnerds who are not familiar with product management - lucky bastards). But this is just
+one more case of training yourself to know what is the right thing to do, and to change your mindset to adopt those
+correct behaviours.
