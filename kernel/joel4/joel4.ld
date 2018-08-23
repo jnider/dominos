@@ -24,7 +24,7 @@ SECTIONS {
       objs/boot.o (.text)
    } : boot_code
   
-   . = ALIGN(0x10);
+   . = ALIGN(0x1000);
    .data_boot :
    {
       objs/boot.o (.data .bss .rodata)
