@@ -1,0 +1,16 @@
+J.Nider 25/08/2018
+
+Messages should be sent asynchronously from the system to applications to
+notify them of various changes. These messages should be unsolicited (sent
+automatically from the server to the clients without being requested
+individually). There should be a mechanism to filter which messages are able
+to be received, and a maximum freqency.
+
+Messages should be received on a message channel associated with the process.
+This is similar to Windows messages, but without the need for polling and
+getting the message - it will be pushed to an asychronous handler function
+which will be called with a pointer to an array of received messages. This
+is also similar to a UNIX signal, but with the ability to batch multiple
+messages, and have a more generic message namespace with types that can be
+declared by the user.
+
