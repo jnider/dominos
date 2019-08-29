@@ -25,4 +25,4 @@ else
 fi
 
 cp image/grub2.cfg $ISOROOT/boot/grub/grub.cfg
-grub-mkrescue -o dominos.iso -- --eltorito-id JOEL $ISOROOT
+grub-mkrescue -o dominos.iso $ISOROOT
